@@ -1,26 +1,104 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { Stepper } from "@/components/Stepper";
+import { Step1Upload } from "@/components/Step1Upload";
+import { Step2Sku } from "@/components/Step2Sku";
+import { Step3Process } from "@/components/Step3Process";
+import type { LoadedImage, SkuGroup } from "@/lib/imagekit";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+  component: ImageKitProApp,
 });
 
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
+function ImageKitProApp() {
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+
+  // Step 1
+  const [images, setImages] = useState<LoadedImage[]>([]);
+  const [folderName, setFolderName] = useState("");
+
+  // Step 2
+  const [groups, setGroups] = useState<SkuGroup[]>([]);
+  const [unmatchedIds, setUnmatchedIds] = useState<string[]>([]);
+  const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
+  const [skuText, setSkuText] = useState("");
+
+  const step1Done = images.length > 0;
+  const step2Done = groups.some((g) => g.han.trim() && g.imageIds.some((id) => !skippedIds.has(id)));
+
+  const jump = (n: 1 | 2 | 3) => {
+    if (n === 2 && !step1Done) return;
+    if (n === 3 && !step2Done) return;
+    setStep(n);
+  };
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-surface/30">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary font-mono text-sm font-bold text-primary-foreground">
+              IK
+            </div>
+            <div>
+              <h1 className="font-mono text-sm font-semibold tracking-tight">
+                ImageKit Pro
+              </h1>
+              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                e-commerce image processor · runs locally
+              </p>
+            </div>
+          </div>
+          <div className="hidden font-mono text-[10px] uppercase tracking-wider text-muted-foreground md:block">
+            v1.0 · no upload · no tracking
+          </div>
+        </div>
+      </header>
+
+      <Stepper current={step} step1Done={step1Done} step2Done={step2Done} onJump={jump} />
+
+      <main className="mx-auto max-w-7xl px-6 py-8">
+        {step === 1 && (
+          <Step1Upload
+            images={images}
+            folderName={folderName}
+            onLoaded={(imgs, folder) => {
+              setImages(imgs);
+              setFolderName(folder);
+              // reset downstream state
+              setGroups([]);
+              setUnmatchedIds([]);
+              setSkippedIds(new Set());
+            }}
+            onContinue={() => setStep(2)}
+          />
+        )}
+        {step === 2 && (
+          <Step2Sku
+            images={images}
+            groups={groups}
+            unmatchedIds={unmatchedIds}
+            skippedIds={skippedIds}
+            skuText={skuText}
+            onChange={(s) => {
+              setGroups(s.groups);
+              setUnmatchedIds(s.unmatchedIds);
+              setSkippedIds(s.skippedIds);
+              setSkuText(s.skuText);
+            }}
+            onContinue={() => setStep(3)}
+          />
+        )}
+        {step === 3 && (
+          <Step3Process images={images} groups={groups} skippedIds={skippedIds} />
+        )}
+      </main>
+
+      <footer className="border-t border-border py-6">
+        <div className="mx-auto max-w-7xl px-6 text-center font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          all processing happens in your browser · no files leave your device
+        </div>
+      </footer>
     </div>
   );
-}
-
-function Index() {
-  return <PlaceholderIndex />;
 }
