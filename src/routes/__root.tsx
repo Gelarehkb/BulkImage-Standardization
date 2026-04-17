@@ -28,6 +28,12 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "ImageKit Pro — Product Image Processor" },
       { name: "description", content: "Browser-based e-commerce product image processing tool. Upload, match SKUs, export 1000x1000 JPEGs and JTL CSV." },
+      { property: "og:title", content: "ImageKit Pro — Product Image Processor" },
+      { name: "twitter:title", content: "ImageKit Pro — Product Image Processor" },
+      { property: "og:description", content: "Browser-based e-commerce product image processing tool. Upload, match SKUs, export 1000x1000 JPEGs and JTL CSV." },
+      { name: "twitter:description", content: "Browser-based e-commerce product image processing tool. Upload, match SKUs, export 1000x1000 JPEGs and JTL CSV." },
+      { name: "twitter:card", content: "summary" },
+      { property: "og:type", content: "website" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
