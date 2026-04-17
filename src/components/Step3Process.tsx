@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import JSZip from "jszip";
 import type { LoadedImage, ProcessedImage, SkuGroup } from "@/lib/imagekit";
 import { downloadBlob, loadImageElement, processToSquare } from "@/lib/imagekit";
 
@@ -6,35 +7,6 @@ interface Props {
   images: LoadedImage[];
   groups: SkuGroup[];
   skippedIds: Set<string>;
-}
-
-declare global {
-  interface Window {
-    JSZip?: new () => {
-      folder(name: string): { file(name: string, data: Blob): void };
-      generateAsync(options: { type: "blob" }): Promise<Blob>;
-    };
-  }
-}
-
-const JSZIP_CDN = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
-
-function loadJSZip(): Promise<void> {
-  if (window.JSZip) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${JSZIP_CDN}"]`);
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () => reject(new Error("Failed to load JSZip")));
-      return;
-    }
-    const s = document.createElement("script");
-    s.src = JSZIP_CDN;
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error("Failed to load JSZip"));
-    document.head.appendChild(s);
-  });
 }
 
 export function Step3Process({ images, groups, skippedIds }: Props) {
@@ -105,10 +77,9 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
   const downloadZip = async () => {
     setZipping(true);
     try {
-      await loadJSZip();
-      if (!window.JSZip) throw new Error("JSZip not available");
-      const zip = new window.JSZip();
+      const zip = new JSZip();
       const folder = zip.folder("processed");
+      if (!folder) throw new Error("Failed to create folder");
       for (const p of processed) folder.file(p.filename, p.blob);
       const blob = await zip.generateAsync({ type: "blob" });
       downloadBlob(blob, "processed_images.zip");
