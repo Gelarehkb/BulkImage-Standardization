@@ -77,10 +77,9 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
   const downloadZip = async () => {
     setZipping(true);
     try {
-      await loadJSZip();
-      if (!window.JSZip) throw new Error("JSZip not available");
-      const zip = new window.JSZip();
+      const zip = new JSZip();
       const folder = zip.folder("processed");
+      if (!folder) throw new Error("Failed to create folder");
       for (const p of processed) folder.file(p.filename, p.blob);
       const blob = await zip.generateAsync({ type: "blob" });
       downloadBlob(blob, "processed_images.zip");
