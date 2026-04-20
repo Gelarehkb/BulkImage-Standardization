@@ -203,12 +203,6 @@ export function Step1Upload({
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface px-4 py-3">
             <div className="font-mono text-xs">
               <span className="text-muted-foreground">{images.length} images loaded</span>
-              {folders.length > 0 && (
-                <>
-                  <span className="mx-2 text-muted-foreground">·</span>
-                  <span className="text-foreground">from: {folders.join(", ")}</span>
-                </>
-              )}
             </div>
             <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
               <span className="rounded-full border border-border bg-secondary px-2 py-0.5">
