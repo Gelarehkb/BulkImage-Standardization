@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   images: LoadedImage[];
-  removeBgApiKey: string;
+  
   onMerge: (imgs: LoadedImage[]) => void;
   onRemove: (id: string) => void;
   onRemoveAll: () => void;
@@ -21,7 +21,7 @@ interface Props {
 
 export function Step1Upload({
   images,
-  removeBgApiKey,
+  
   onMerge,
   onRemove,
   onRemoveAll,
@@ -92,7 +92,6 @@ export function Step1Upload({
   };
 
   const handleRemoveBg = async (img: LoadedImage) => {
-    if (!removeBgApiKey) return;
     setBgError((p) => {
       const n = { ...p };
       delete n[img.id];
@@ -100,7 +99,7 @@ export function Step1Upload({
     });
     setBgWorking((p) => new Set(p).add(img.id));
     try {
-      const pngBlob = await removeBackground(img.file, removeBgApiKey);
+      const pngBlob = await removeBackground(img.file);
       const newFile = new File([pngBlob], img.filename.replace(/\.[^.]+$/, "") + ".png", {
         type: "image/png",
       });
@@ -225,7 +224,7 @@ export function Step1Upload({
             {images.map((img) => {
               const working = bgWorking.has(img.id);
               const err = bgError[img.id];
-              const canRemoveBg = !!removeBgApiKey && !working;
+              const canRemoveBg = !working;
               return (
                 <div
                   key={img.id}
@@ -275,7 +274,7 @@ export function Step1Upload({
                     type="button"
                     onClick={() => handleRemoveBg(img)}
                     disabled={!canRemoveBg}
-                    title={removeBgApiKey ? "Remove background via remove.bg" : "Add API key in settings"}
+                    title="Remove background (runs locally)"
                     className="mt-2 w-full rounded border border-border bg-surface-elevated px-2 py-1 font-mono text-[10px] hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     🪄 Remove BG
