@@ -224,7 +224,7 @@ export function Step1Upload({
             {images.map((img) => {
               const working = bgWorking.has(img.id);
               const err = bgError[img.id];
-              const canRemoveBg = !!removeBgApiKey && !working;
+              const canRemoveBg = !working;
               return (
                 <div
                   key={img.id}
@@ -274,7 +274,7 @@ export function Step1Upload({
                     type="button"
                     onClick={() => handleRemoveBg(img)}
                     disabled={!canRemoveBg}
-                    title={removeBgApiKey ? "Remove background via remove.bg" : "Add API key in settings"}
+                    title="Remove background (runs locally)"
                     className="mt-2 w-full rounded border border-border bg-surface-elevated px-2 py-1 font-mono text-[10px] hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     🪄 Remove BG
