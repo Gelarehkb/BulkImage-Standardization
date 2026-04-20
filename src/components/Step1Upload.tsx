@@ -92,7 +92,6 @@ export function Step1Upload({
   };
 
   const handleRemoveBg = async (img: LoadedImage) => {
-    if (!removeBgApiKey) return;
     setBgError((p) => {
       const n = { ...p };
       delete n[img.id];
@@ -100,7 +99,7 @@ export function Step1Upload({
     });
     setBgWorking((p) => new Set(p).add(img.id));
     try {
-      const pngBlob = await removeBackground(img.file, removeBgApiKey);
+      const pngBlob = await removeBackground(img.file);
       const newFile = new File([pngBlob], img.filename.replace(/\.[^.]+$/, "") + ".png", {
         type: "image/png",
       });
