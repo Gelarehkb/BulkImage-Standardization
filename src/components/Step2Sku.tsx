@@ -39,13 +39,13 @@ export function Step2Sku({
 
   const runBatchRemoveBg = async () => {
     const targets = images.filter((i) => i.bg !== "white");
-    if (targets.length === 0 || !removeBgApiKey) return;
+    if (targets.length === 0) return;
     setBatchBg({ active: true, done: 0, total: targets.length, failed: 0 });
     let failed = 0;
     for (let i = 0; i < targets.length; i++) {
       const img = targets[i];
       try {
-        const pngBlob = await removeBackground(img.file, removeBgApiKey);
+        const pngBlob = await removeBackground(img.file);
         const newFile = new File([pngBlob], img.filename.replace(/\.[^.]+$/, "") + ".png", {
           type: "image/png",
         });
