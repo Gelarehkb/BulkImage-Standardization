@@ -36,13 +36,12 @@ function ImageKitProApp() {
     setStep(n);
   };
 
-  const mergeImages = (incoming: LoadedImage[], folder: string) => {
+  const mergeImages = (incoming: LoadedImage[]) => {
     setImages((prev) => {
       const seen = new Set(prev.map((p) => p.filename));
       const merged = [...prev];
       for (const img of incoming) {
         if (seen.has(img.filename)) {
-          // Free the duplicate's blob URL since it won't be used
           URL.revokeObjectURL(img.url);
           continue;
         }
@@ -52,9 +51,6 @@ function ImageKitProApp() {
       merged.sort((a, b) => a.filename.localeCompare(b.filename));
       return merged;
     });
-    if (folder) {
-      setFolders((prev) => (prev.includes(folder) ? prev : [...prev, folder]));
-    }
     // Reset downstream state since image set changed
     setGroups([]);
     setUnmatchedIds([]);
