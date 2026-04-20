@@ -22,9 +22,6 @@ function ImageKitProApp() {
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
   const [skuText, setSkuText] = useState("");
 
-  // Settings
-  const [removeBgApiKey, setRemoveBgApiKey] = useState("");
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const step1Done = images.length > 0;
   const step2Done = groups.some((g) => g.han.trim() && g.imageIds.some((id) => !skippedIds.has(id)));
