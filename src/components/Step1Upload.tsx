@@ -45,13 +45,6 @@ export function Step1Upload({
       setLoading(true);
       setProgress({ done: 0, total: arr.length });
 
-      // Detect folder name
-      let folder = "";
-      const first = arr[0] as File & { webkitRelativePath?: string };
-      if (first.webkitRelativePath) {
-        folder = first.webkitRelativePath.split("/")[0] ?? "";
-      }
-
       const loaded: LoadedImage[] = [];
       for (let i = 0; i < arr.length; i++) {
         const f = arr[i];
@@ -75,7 +68,7 @@ export function Step1Upload({
         setProgress({ done: i + 1, total: arr.length });
       }
 
-      onMerge(loaded, folder);
+      onMerge(loaded);
       setLoading(false);
     },
     [onMerge],
