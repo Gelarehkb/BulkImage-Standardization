@@ -11,9 +11,8 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   images: LoadedImage[];
-  folders: string[];
   removeBgApiKey: string;
-  onMerge: (imgs: LoadedImage[], folder?: string) => void;
+  onMerge: (imgs: LoadedImage[]) => void;
   onRemove: (id: string) => void;
   onRemoveAll: () => void;
   onReplace: (id: string, next: LoadedImage) => void;
@@ -22,7 +21,6 @@ interface Props {
 
 export function Step1Upload({
   images,
-  folders,
   removeBgApiKey,
   onMerge,
   onRemove,
