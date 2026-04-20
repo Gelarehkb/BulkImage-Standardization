@@ -185,6 +185,31 @@ export function Step2Sku({
             </div>
           </div>
         )}
+
+        <div className="space-y-2 rounded-md border border-border bg-surface p-4">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            Background removal (batch)
+          </h3>
+          <p className="font-mono text-[10px] text-muted-foreground">
+            Runs remove.bg on every image not detected as white-bg.
+          </p>
+          <button
+            type="button"
+            onClick={runBatchRemoveBg}
+            disabled={!removeBgApiKey || batchBg.active || images.every((i) => i.bg === "white")}
+            title={removeBgApiKey ? "Process all model images" : "Add API key in settings"}
+            className="w-full rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm font-medium hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            🪄 Remove BG from all Model images
+          </button>
+          {batchBg.total > 0 && (
+            <div className="font-mono text-[10px] text-muted-foreground">
+              {batchBg.done} / {batchBg.total} processed
+              {batchBg.failed > 0 && ` · ${batchBg.failed} failed`}
+              {!batchBg.active && batchBg.done === batchBg.total && " · ✅ done"}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* RIGHT */}
