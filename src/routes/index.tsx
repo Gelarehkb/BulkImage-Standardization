@@ -75,7 +75,6 @@ function ImageKitProApp() {
   const removeAllImages = () => {
     images.forEach((i) => URL.revokeObjectURL(i.url));
     setImages([]);
-    setFolders([]);
     setGroups([]);
     setUnmatchedIds([]);
     setSkippedIds(new Set());
