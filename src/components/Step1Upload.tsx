@@ -1,21 +1,42 @@
 import { useCallback, useRef, useState } from "react";
 import type { LoadedImage } from "@/lib/imagekit";
-import { detectWhiteBg, downloadBlob, formatBytes, loadImageElement } from "@/lib/imagekit";
+import {
+  detectWhiteBg,
+  downloadBlob,
+  formatBytes,
+  loadImageElement,
+  removeBackground,
+} from "@/lib/imagekit";
 import { cn } from "@/lib/utils";
 
 interface Props {
   images: LoadedImage[];
-  folderName: string;
-  onLoaded: (imgs: LoadedImage[], folder: string) => void;
+  folders: string[];
+  removeBgApiKey: string;
+  onMerge: (imgs: LoadedImage[], folder: string) => void;
+  onRemove: (id: string) => void;
+  onRemoveAll: () => void;
+  onReplace: (id: string, next: LoadedImage) => void;
   onContinue: () => void;
 }
 
-export function Step1Upload({ images, folderName, onLoaded, onContinue }: Props) {
+export function Step1Upload({
+  images,
+  folders,
+  removeBgApiKey,
+  onMerge,
+  onRemove,
+  onRemoveAll,
+  onReplace,
+  onContinue,
+}: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [bgWorking, setBgWorking] = useState<Set<string>>(new Set());
+  const [bgError, setBgError] = useState<Record<string, string>>({});
 
   const handleFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -55,11 +76,10 @@ export function Step1Upload({ images, folderName, onLoaded, onContinue }: Props)
         setProgress({ done: i + 1, total: arr.length });
       }
 
-      loaded.sort((a, b) => a.filename.localeCompare(b.filename));
-      onLoaded(loaded, folder);
+      onMerge(loaded, folder);
       setLoading(false);
     },
-    [onLoaded],
+    [onMerge],
   );
 
   const onDrop = (e: React.DragEvent) => {
@@ -73,6 +93,48 @@ export function Step1Upload({ images, folderName, onLoaded, onContinue }: Props)
     const txt = sorted.map((i) => i.filename).join("\n");
     const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
     downloadBlob(blob, "filename_list.txt");
+  };
+
+  const handleRemoveAll = () => {
+    if (window.confirm(`Remove all ${images.length} images? This cannot be undone.`)) {
+      onRemoveAll();
+    }
+  };
+
+  const handleRemoveBg = async (img: LoadedImage) => {
+    if (!removeBgApiKey) return;
+    setBgError((p) => {
+      const n = { ...p };
+      delete n[img.id];
+      return n;
+    });
+    setBgWorking((p) => new Set(p).add(img.id));
+    try {
+      const pngBlob = await removeBackground(img.file, removeBgApiKey);
+      const newFile = new File([pngBlob], img.filename.replace(/\.[^.]+$/, "") + ".png", {
+        type: "image/png",
+      });
+      const newUrl = URL.createObjectURL(pngBlob);
+      const el = await loadImageElement(newUrl);
+      const bg = await detectWhiteBg(el);
+      onReplace(img.id, {
+        ...img,
+        file: newFile,
+        size: pngBlob.size,
+        url: newUrl,
+        width: el.naturalWidth,
+        height: el.naturalHeight,
+        bg,
+      });
+    } catch (e) {
+      setBgError((p) => ({ ...p, [img.id]: e instanceof Error ? e.message : "Failed" }));
+    } finally {
+      setBgWorking((p) => {
+        const n = new Set(p);
+        n.delete(img.id);
+        return n;
+      });
+    }
   };
 
   const whiteCount = images.filter((i) => i.bg === "white").length;
@@ -99,9 +161,11 @@ export function Step1Upload({ images, folderName, onLoaded, onContinue }: Props)
             📁
           </div>
           <div>
-            <h3 className="text-lg font-semibold">Drop images or a folder here</h3>
+            <h3 className="text-lg font-semibold">
+              {images.length > 0 ? "Add more images or folders" : "Drop images or a folder here"}
+            </h3>
             <p className="mt-1 font-mono text-xs text-muted-foreground">
-              PNG · JPG · WEBP — processed locally, never uploaded
+              PNG · JPG · WEBP — processed locally, never uploaded · duplicates skipped
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
@@ -129,7 +193,10 @@ export function Step1Upload({ images, folderName, onLoaded, onContinue }: Props)
             webkitdirectory=""
             directory=""
             className="hidden"
-            onChange={(e) => e.target.files && handleFiles(e.target.files)}
+            onChange={(e) => {
+              if (e.target.files) handleFiles(e.target.files);
+              e.target.value = "";
+            }}
           />
           <input
             ref={fileInputRef}
@@ -137,7 +204,10 @@ export function Step1Upload({ images, folderName, onLoaded, onContinue }: Props)
             multiple
             accept="image/*"
             className="hidden"
-            onChange={(e) => e.target.files && handleFiles(e.target.files)}
+            onChange={(e) => {
+              if (e.target.files) handleFiles(e.target.files);
+              e.target.value = "";
+            }}
           />
         </div>
       </div>
@@ -164,52 +234,92 @@ export function Step1Upload({ images, folderName, onLoaded, onContinue }: Props)
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface px-4 py-3">
             <div className="font-mono text-xs">
               <span className="text-muted-foreground">{images.length} images loaded</span>
-              {folderName && (
+              {folders.length > 0 && (
                 <>
                   <span className="mx-2 text-muted-foreground">·</span>
-                  <span className="text-foreground">folder: {folderName}</span>
+                  <span className="text-foreground">from: {folders.join(", ")}</span>
                 </>
               )}
             </div>
-            <div className="flex gap-2 font-mono text-[11px]">
+            <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
               <span className="rounded-full border border-border bg-secondary px-2 py-0.5">
                 ⬜ {whiteCount} white
               </span>
               <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-primary">
                 🖼️ {modelCount} model
               </span>
+              <button
+                type="button"
+                onClick={handleRemoveAll}
+                className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive hover:bg-destructive/20"
+              >
+                🗑 Remove All
+              </button>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {images.map((img) => (
-              <div
-                key={img.id}
-                className="group rounded-md border border-border bg-surface p-2 transition-colors hover:border-primary/50"
-              >
-                <div className="relative aspect-square overflow-hidden rounded bg-background">
-                  <img src={img.url} alt={img.filename} className="h-full w-full object-cover" />
-                  <span
-                    className={cn(
-                      "absolute left-1.5 top-1.5 rounded-full border px-1.5 py-0.5 font-mono text-[9px] backdrop-blur",
-                      img.bg === "white"
-                        ? "border-border bg-background/80 text-muted-foreground"
-                        : "border-primary/40 bg-primary/20 text-primary",
-                    )}
+            {images.map((img) => {
+              const working = bgWorking.has(img.id);
+              const err = bgError[img.id];
+              const canRemoveBg = !!removeBgApiKey && !working;
+              return (
+                <div
+                  key={img.id}
+                  className="group relative rounded-md border border-border bg-surface p-2 transition-colors hover:border-primary/50"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onRemove(img.id)}
+                    className="absolute right-1 top-1 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-background/90 text-xs hover:bg-destructive hover:text-destructive-foreground group-hover:flex"
+                    title="Remove image"
+                    aria-label="Remove image"
                   >
-                    {img.bg === "white" ? "⬜ White BG" : "🖼️ Model"}
-                  </span>
-                </div>
-                <div className="mt-2 px-0.5">
-                  <div className="truncate font-mono text-[11px]" title={img.filename}>
-                    {img.filename}
+                    ✕
+                  </button>
+                  <div className="relative aspect-square overflow-hidden rounded bg-background">
+                    <img src={img.url} alt={img.filename} className="h-full w-full object-cover" />
+                    <span
+                      className={cn(
+                        "absolute left-1.5 top-1.5 rounded-full border px-1.5 py-0.5 font-mono text-[9px] backdrop-blur",
+                        img.bg === "white"
+                          ? "border-border bg-background/80 text-muted-foreground"
+                          : "border-primary/40 bg-primary/20 text-primary",
+                      )}
+                    >
+                      {img.bg === "white" ? "⬜ White BG" : "🖼️ Model"}
+                    </span>
+                    {working && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/70 font-mono text-[10px]">
+                        🪄 removing bg…
+                      </div>
+                    )}
+                    {err && (
+                      <span className="absolute bottom-1.5 left-1.5 rounded-full border border-destructive/50 bg-destructive/20 px-1.5 py-0.5 font-mono text-[9px] text-destructive">
+                        BG removal failed
+                      </span>
+                    )}
                   </div>
-                  <div className="font-mono text-[10px] text-muted-foreground">
-                    {formatBytes(img.size)} · {img.width}×{img.height}
+                  <div className="mt-2 px-0.5">
+                    <div className="truncate font-mono text-[11px]" title={img.filename}>
+                      {img.filename}
+                    </div>
+                    <div className="font-mono text-[10px] text-muted-foreground">
+                      {formatBytes(img.size)} · {img.width}×{img.height}
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveBg(img)}
+                    disabled={!canRemoveBg}
+                    title={removeBgApiKey ? "Remove background via remove.bg" : "Add API key in settings"}
+                    className="mt-2 w-full rounded border border-border bg-surface-elevated px-2 py-1 font-mono text-[10px] hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    🪄 Remove BG
+                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="flex flex-wrap gap-3">
