@@ -114,6 +114,29 @@ export function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Call remove.bg API and return PNG blob (transparent background). */
+export async function removeBackground(file: File | Blob, apiKey: string): Promise<Blob> {
+  const fd = new FormData();
+  fd.append("image_file", file);
+  fd.append("size", "preview");
+  const res = await fetch("https://api.remove.bg/v1.0/removebg", {
+    method: "POST",
+    headers: { "X-Api-Key": apiKey },
+    body: fd,
+  });
+  if (!res.ok) {
+    let msg = `remove.bg failed (${res.status})`;
+    try {
+      const j = (await res.json()) as { errors?: Array<{ title?: string }> };
+      if (j.errors?.[0]?.title) msg = j.errors[0].title!;
+    } catch {
+      // ignore
+    }
+    throw new Error(msg);
+  }
+  return await res.blob();
+}
+
 /** Match SKUs to images. Each image → at most one SKU (longest match wins). */
 export function matchSkus(
   skus: string[],
