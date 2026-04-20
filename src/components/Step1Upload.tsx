@@ -154,7 +154,7 @@ export function Step1Upload({
           </div>
           <div>
             <h3 className="text-lg font-semibold">
-              {images.length > 0 ? "Add more images or folders" : "Drop images or a folder here"}
+              {images.length > 0 ? "Add more images" : "Drop images here"}
             </h3>
             <p className="mt-1 font-mono text-xs text-muted-foreground">
               PNG · JPG · WEBP — processed locally, never uploaded · duplicates skipped
@@ -163,33 +163,12 @@ export function Step1Upload({
           <div className="flex flex-wrap justify-center gap-2">
             <button
               type="button"
-              onClick={() => folderInputRef.current?.click()}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              📁 Select Folder
-            </button>
-            <button
-              type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium hover:bg-surface-elevated"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
               Select Files
             </button>
           </div>
-          <input
-            ref={folderInputRef}
-            type="file"
-            multiple
-            accept="image/*"
-            // @ts-expect-error non-standard attr
-            webkitdirectory=""
-            directory=""
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files) handleFiles(e.target.files);
-              e.target.value = "";
-            }}
-          />
           <input
             ref={fileInputRef}
             type="file"
