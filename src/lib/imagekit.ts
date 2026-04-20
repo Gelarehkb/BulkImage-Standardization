@@ -114,27 +114,37 @@ export function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** Call remove.bg API and return PNG blob (transparent background). */
-export async function removeBackground(file: File | Blob, apiKey: string): Promise<Blob> {
-  const fd = new FormData();
-  fd.append("image_file", file);
-  fd.append("size", "preview");
-  const res = await fetch("https://api.remove.bg/v1.0/removebg", {
-    method: "POST",
-    headers: { "X-Api-Key": apiKey },
-    body: fd,
-  });
-  if (!res.ok) {
-    let msg = `remove.bg failed (${res.status})`;
-    try {
-      const j = (await res.json()) as { errors?: Array<{ title?: string }> };
-      if (j.errors?.[0]?.title) msg = j.errors[0].title!;
-    } catch {
-      // ignore
-    }
-    throw new Error(msg);
+/**
+ * Remove background locally using @imgly/background-removal (runs in browser via WASM).
+ * Composites the cutout onto a solid white background and returns a PNG blob.
+ * No API key, no upload — fully local.
+ */
+export async function removeBackground(file: File | Blob): Promise<Blob> {
+  const { removeBackground: imglyRemove } = await import("@imgly/background-removal");
+  // Returns a Blob with transparent background (PNG)
+  const cutout = await imglyRemove(file);
+
+  // Composite onto white so downstream pipeline gets a clean white-bg image
+  const url = URL.createObjectURL(cutout);
+  try {
+    const img = await loadImageElement(url);
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas 2D context unavailable");
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("Failed to encode PNG"))),
+        "image/png",
+      );
+    });
+  } finally {
+    URL.revokeObjectURL(url);
   }
-  return await res.blob();
 }
 
 /** Match SKUs to images. Each image → at most one SKU (longest match wins). */
