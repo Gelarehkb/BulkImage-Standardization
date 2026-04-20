@@ -154,7 +154,6 @@ function ImageKitProApp() {
         {step === 1 && (
           <Step1Upload
             images={images}
-            folders={folders}
             removeBgApiKey={removeBgApiKey}
             onMerge={mergeImages}
             onRemove={removeImage}
