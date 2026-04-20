@@ -74,7 +74,7 @@ export async function detectWhiteBg(img: HTMLImageElement): Promise<BgKind> {
   return avg > 238 ? "white" : "model";
 }
 
-/** Render image centered onto 1000x1000 white canvas, return JPEG blob q=0.92 */
+/** Render image FILLING 1000x1000 white canvas (cover), return JPEG blob q=0.92 */
 export async function processToSquare(img: HTMLImageElement, size = 1000): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -84,9 +84,10 @@ export async function processToSquare(img: HTMLImageElement, size = 1000): Promi
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, size, size);
 
-  const ratio = Math.min(size / img.naturalWidth, size / img.naturalHeight);
-  const w = img.naturalWidth * ratio;
-  const h = img.naturalHeight * ratio;
+  // Cover: scale up so shorter side fills, then center-crop longer side
+  const scale = Math.max(size / img.naturalWidth, size / img.naturalHeight);
+  const w = img.naturalWidth * scale;
+  const h = img.naturalHeight * scale;
   const x = (size - w) / 2;
   const y = (size - h) / 2;
   ctx.imageSmoothingEnabled = true;
