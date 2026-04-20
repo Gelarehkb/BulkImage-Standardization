@@ -15,7 +15,6 @@ function ImageKitProApp() {
 
   // Step 1
   const [images, setImages] = useState<LoadedImage[]>([]);
-  const [folders, setFolders] = useState<string[]>([]);
 
   // Step 2
   const [groups, setGroups] = useState<SkuGroup[]>([]);
