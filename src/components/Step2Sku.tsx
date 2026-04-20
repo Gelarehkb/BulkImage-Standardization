@@ -9,7 +9,7 @@ interface Props {
   unmatchedIds: string[];
   skippedIds: Set<string>;
   skuText: string;
-  removeBgApiKey: string;
+  
   onReplace: (id: string, next: LoadedImage) => void;
   onChange: (state: {
     groups: SkuGroup[];
@@ -26,7 +26,7 @@ export function Step2Sku({
   unmatchedIds,
   skippedIds,
   skuText,
-  removeBgApiKey,
+  
   onReplace,
   onChange,
   onContinue,
@@ -191,13 +191,13 @@ export function Step2Sku({
             Background removal (batch)
           </h3>
           <p className="font-mono text-[10px] text-muted-foreground">
-            Runs remove.bg on every image not detected as white-bg.
+            Runs locally in your browser on every image not detected as white-bg. First run downloads the model (~40MB).
           </p>
           <button
             type="button"
             onClick={runBatchRemoveBg}
-            disabled={!removeBgApiKey || batchBg.active || images.every((i) => i.bg === "white")}
-            title={removeBgApiKey ? "Process all model images" : "Add API key in settings"}
+            disabled={batchBg.active || images.every((i) => i.bg === "white")}
+            title="Process all model images"
             className="w-full rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm font-medium hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
           >
             🪄 Remove BG from all Model images
