@@ -13,7 +13,7 @@ interface Props {
   images: LoadedImage[];
   folders: string[];
   removeBgApiKey: string;
-  onMerge: (imgs: LoadedImage[], folder: string) => void;
+  onMerge: (imgs: LoadedImage[], folder?: string) => void;
   onRemove: (id: string) => void;
   onRemoveAll: () => void;
   onReplace: (id: string, next: LoadedImage) => void;
