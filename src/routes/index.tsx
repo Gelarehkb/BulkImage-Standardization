@@ -108,39 +108,8 @@ function ImageKitProApp() {
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden font-mono text-[10px] uppercase tracking-wider text-muted-foreground md:block">
-              v1.1 · no upload · no tracking
+              v1.2 · 100% local · no upload · no tracking
             </span>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setSettingsOpen((o) => !o)}
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-sm hover:bg-surface-elevated"
-                aria-label="Settings"
-                title="Settings"
-              >
-                ⚙️
-              </button>
-              {settingsOpen && (
-                <div className="absolute right-0 top-10 z-20 w-80 rounded-md border border-border bg-surface p-4 shadow-lg">
-                  <h3 className="mb-2 font-mono text-xs uppercase tracking-wider text-muted-foreground">
-                    Settings
-                  </h3>
-                  <label className="mb-1 block font-mono text-[11px]">
-                    remove.bg API Key
-                  </label>
-                  <input
-                    type="password"
-                    value={removeBgApiKey}
-                    onChange={(e) => setRemoveBgApiKey(e.target.value)}
-                    placeholder="paste API key"
-                    className="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-xs outline-none focus:border-primary"
-                  />
-                  <p className="mt-2 font-mono text-[10px] text-muted-foreground">
-                    Stored only in memory. Cleared on reload. Get a free key at remove.bg.
-                  </p>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </header>
