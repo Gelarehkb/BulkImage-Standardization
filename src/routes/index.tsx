@@ -120,7 +120,6 @@ function ImageKitProApp() {
         {step === 1 && (
           <Step1Upload
             images={images}
-            removeBgApiKey={removeBgApiKey}
             onMerge={mergeImages}
             onRemove={removeImage}
             onRemoveAll={removeAllImages}
@@ -135,7 +134,6 @@ function ImageKitProApp() {
             unmatchedIds={unmatchedIds}
             skippedIds={skippedIds}
             skuText={skuText}
-            removeBgApiKey={removeBgApiKey}
             onReplace={replaceImage}
             onChange={(s) => {
               setGroups(s.groups);
