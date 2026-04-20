@@ -15,13 +15,17 @@ function ImageKitProApp() {
 
   // Step 1
   const [images, setImages] = useState<LoadedImage[]>([]);
-  const [folderName, setFolderName] = useState("");
+  const [folders, setFolders] = useState<string[]>([]);
 
   // Step 2
   const [groups, setGroups] = useState<SkuGroup[]>([]);
   const [unmatchedIds, setUnmatchedIds] = useState<string[]>([]);
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
   const [skuText, setSkuText] = useState("");
+
+  // Settings
+  const [removeBgApiKey, setRemoveBgApiKey] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const step1Done = images.length > 0;
   const step2Done = groups.some((g) => g.han.trim() && g.imageIds.some((id) => !skippedIds.has(id)));
@@ -30,6 +34,68 @@ function ImageKitProApp() {
     if (n === 2 && !step1Done) return;
     if (n === 3 && !step2Done) return;
     setStep(n);
+  };
+
+  const mergeImages = (incoming: LoadedImage[], folder: string) => {
+    setImages((prev) => {
+      const seen = new Set(prev.map((p) => p.filename));
+      const merged = [...prev];
+      for (const img of incoming) {
+        if (seen.has(img.filename)) {
+          // Free the duplicate's blob URL since it won't be used
+          URL.revokeObjectURL(img.url);
+          continue;
+        }
+        seen.add(img.filename);
+        merged.push(img);
+      }
+      merged.sort((a, b) => a.filename.localeCompare(b.filename));
+      return merged;
+    });
+    if (folder) {
+      setFolders((prev) => (prev.includes(folder) ? prev : [...prev, folder]));
+    }
+    // Reset downstream state since image set changed
+    setGroups([]);
+    setUnmatchedIds([]);
+    setSkippedIds(new Set());
+  };
+
+  const removeImage = (id: string) => {
+    setImages((prev) => {
+      const target = prev.find((i) => i.id === id);
+      if (target) URL.revokeObjectURL(target.url);
+      return prev.filter((i) => i.id !== id);
+    });
+    setGroups((prev) => prev.map((g) => ({ ...g, imageIds: g.imageIds.filter((x) => x !== id) })));
+    setUnmatchedIds((prev) => prev.filter((x) => x !== id));
+    setSkippedIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const n = new Set(prev);
+      n.delete(id);
+      return n;
+    });
+  };
+
+  const removeAllImages = () => {
+    images.forEach((i) => URL.revokeObjectURL(i.url));
+    setImages([]);
+    setFolders([]);
+    setGroups([]);
+    setUnmatchedIds([]);
+    setSkippedIds(new Set());
+  };
+
+  const replaceImage = (id: string, next: LoadedImage) => {
+    setImages((prev) => {
+      const idx = prev.findIndex((i) => i.id === id);
+      if (idx === -1) return prev;
+      const old = prev[idx];
+      if (old.url !== next.url) URL.revokeObjectURL(old.url);
+      const copy = [...prev];
+      copy[idx] = next;
+      return copy;
+    });
   };
 
   return (
@@ -49,8 +115,41 @@ function ImageKitProApp() {
               </p>
             </div>
           </div>
-          <div className="hidden font-mono text-[10px] uppercase tracking-wider text-muted-foreground md:block">
-            v1.0 · no upload · no tracking
+          <div className="flex items-center gap-3">
+            <span className="hidden font-mono text-[10px] uppercase tracking-wider text-muted-foreground md:block">
+              v1.1 · no upload · no tracking
+            </span>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen((o) => !o)}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-sm hover:bg-surface-elevated"
+                aria-label="Settings"
+                title="Settings"
+              >
+                ⚙️
+              </button>
+              {settingsOpen && (
+                <div className="absolute right-0 top-10 z-20 w-80 rounded-md border border-border bg-surface p-4 shadow-lg">
+                  <h3 className="mb-2 font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                    Settings
+                  </h3>
+                  <label className="mb-1 block font-mono text-[11px]">
+                    remove.bg API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={removeBgApiKey}
+                    onChange={(e) => setRemoveBgApiKey(e.target.value)}
+                    placeholder="paste API key"
+                    className="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-xs outline-none focus:border-primary"
+                  />
+                  <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+                    Stored only in memory. Cleared on reload. Get a free key at remove.bg.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -61,15 +160,12 @@ function ImageKitProApp() {
         {step === 1 && (
           <Step1Upload
             images={images}
-            folderName={folderName}
-            onLoaded={(imgs, folder) => {
-              setImages(imgs);
-              setFolderName(folder);
-              // reset downstream state
-              setGroups([]);
-              setUnmatchedIds([]);
-              setSkippedIds(new Set());
-            }}
+            folders={folders}
+            removeBgApiKey={removeBgApiKey}
+            onMerge={mergeImages}
+            onRemove={removeImage}
+            onRemoveAll={removeAllImages}
+            onReplace={replaceImage}
             onContinue={() => setStep(2)}
           />
         )}
@@ -80,6 +176,8 @@ function ImageKitProApp() {
             unmatchedIds={unmatchedIds}
             skippedIds={skippedIds}
             skuText={skuText}
+            removeBgApiKey={removeBgApiKey}
+            onReplace={replaceImage}
             onChange={(s) => {
               setGroups(s.groups);
               setUnmatchedIds(s.unmatchedIds);

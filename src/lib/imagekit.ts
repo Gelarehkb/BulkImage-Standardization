@@ -74,7 +74,7 @@ export async function detectWhiteBg(img: HTMLImageElement): Promise<BgKind> {
   return avg > 238 ? "white" : "model";
 }
 
-/** Render image centered onto 1000x1000 white canvas, return JPEG blob q=0.92 */
+/** Render image FILLING 1000x1000 white canvas (cover), return JPEG blob q=0.92 */
 export async function processToSquare(img: HTMLImageElement, size = 1000): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -84,9 +84,10 @@ export async function processToSquare(img: HTMLImageElement, size = 1000): Promi
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, size, size);
 
-  const ratio = Math.min(size / img.naturalWidth, size / img.naturalHeight);
-  const w = img.naturalWidth * ratio;
-  const h = img.naturalHeight * ratio;
+  // Cover: scale up so shorter side fills, then center-crop longer side
+  const scale = Math.max(size / img.naturalWidth, size / img.naturalHeight);
+  const w = img.naturalWidth * scale;
+  const h = img.naturalHeight * scale;
   const x = (size - w) / 2;
   const y = (size - h) / 2;
   ctx.imageSmoothingEnabled = true;
@@ -111,6 +112,29 @@ export function downloadBlob(blob: Blob, filename: string) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Call remove.bg API and return PNG blob (transparent background). */
+export async function removeBackground(file: File | Blob, apiKey: string): Promise<Blob> {
+  const fd = new FormData();
+  fd.append("image_file", file);
+  fd.append("size", "preview");
+  const res = await fetch("https://api.remove.bg/v1.0/removebg", {
+    method: "POST",
+    headers: { "X-Api-Key": apiKey },
+    body: fd,
+  });
+  if (!res.ok) {
+    let msg = `remove.bg failed (${res.status})`;
+    try {
+      const j = (await res.json()) as { errors?: Array<{ title?: string }> };
+      if (j.errors?.[0]?.title) msg = j.errors[0].title!;
+    } catch {
+      // ignore
+    }
+    throw new Error(msg);
+  }
+  return await res.blob();
 }
 
 /** Match SKUs to images. Each image → at most one SKU (longest match wins). */

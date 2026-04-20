@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { LoadedImage, SkuGroup } from "@/lib/imagekit";
-import { matchSkus } from "@/lib/imagekit";
+import { detectWhiteBg, loadImageElement, matchSkus, removeBackground } from "@/lib/imagekit";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -9,6 +9,8 @@ interface Props {
   unmatchedIds: string[];
   skippedIds: Set<string>;
   skuText: string;
+  removeBgApiKey: string;
+  onReplace: (id: string, next: LoadedImage) => void;
   onChange: (state: {
     groups: SkuGroup[];
     unmatchedIds: string[];
@@ -24,11 +26,48 @@ export function Step2Sku({
   unmatchedIds,
   skippedIds,
   skuText,
+  removeBgApiKey,
+  onReplace,
   onChange,
   onContinue,
 }: Props) {
   const [assignInputs, setAssignInputs] = useState<Record<string, string>>({});
   const [unmatchedOpen, setUnmatchedOpen] = useState(true);
+  const [batchBg, setBatchBg] = useState<{ active: boolean; done: number; total: number; failed: number }>(
+    { active: false, done: 0, total: 0, failed: 0 },
+  );
+
+  const runBatchRemoveBg = async () => {
+    const targets = images.filter((i) => i.bg !== "white");
+    if (targets.length === 0 || !removeBgApiKey) return;
+    setBatchBg({ active: true, done: 0, total: targets.length, failed: 0 });
+    let failed = 0;
+    for (let i = 0; i < targets.length; i++) {
+      const img = targets[i];
+      try {
+        const pngBlob = await removeBackground(img.file, removeBgApiKey);
+        const newFile = new File([pngBlob], img.filename.replace(/\.[^.]+$/, "") + ".png", {
+          type: "image/png",
+        });
+        const newUrl = URL.createObjectURL(pngBlob);
+        const el = await loadImageElement(newUrl);
+        const bg = await detectWhiteBg(el);
+        onReplace(img.id, {
+          ...img,
+          file: newFile,
+          size: pngBlob.size,
+          url: newUrl,
+          width: el.naturalWidth,
+          height: el.naturalHeight,
+          bg,
+        });
+      } catch {
+        failed++;
+      }
+      setBatchBg({ active: true, done: i + 1, total: targets.length, failed });
+    }
+    setBatchBg((p) => ({ ...p, active: false }));
+  };
 
   const byId = useMemo(() => new Map(images.map((i) => [i.id, i])), [images]);
 
@@ -146,6 +185,31 @@ export function Step2Sku({
             </div>
           </div>
         )}
+
+        <div className="space-y-2 rounded-md border border-border bg-surface p-4">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            Background removal (batch)
+          </h3>
+          <p className="font-mono text-[10px] text-muted-foreground">
+            Runs remove.bg on every image not detected as white-bg.
+          </p>
+          <button
+            type="button"
+            onClick={runBatchRemoveBg}
+            disabled={!removeBgApiKey || batchBg.active || images.every((i) => i.bg === "white")}
+            title={removeBgApiKey ? "Process all model images" : "Add API key in settings"}
+            className="w-full rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm font-medium hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            🪄 Remove BG from all Model images
+          </button>
+          {batchBg.total > 0 && (
+            <div className="font-mono text-[10px] text-muted-foreground">
+              {batchBg.done} / {batchBg.total} processed
+              {batchBg.failed > 0 && ` · ${batchBg.failed} failed`}
+              {!batchBg.active && batchBg.done === batchBg.total && " · ✅ done"}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* RIGHT */}
