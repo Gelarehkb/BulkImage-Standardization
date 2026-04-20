@@ -15,7 +15,6 @@ function ImageKitProApp() {
 
   // Step 1
   const [images, setImages] = useState<LoadedImage[]>([]);
-  const [folders, setFolders] = useState<string[]>([]);
 
   // Step 2
   const [groups, setGroups] = useState<SkuGroup[]>([]);
@@ -36,13 +35,12 @@ function ImageKitProApp() {
     setStep(n);
   };
 
-  const mergeImages = (incoming: LoadedImage[], folder: string) => {
+  const mergeImages = (incoming: LoadedImage[]) => {
     setImages((prev) => {
       const seen = new Set(prev.map((p) => p.filename));
       const merged = [...prev];
       for (const img of incoming) {
         if (seen.has(img.filename)) {
-          // Free the duplicate's blob URL since it won't be used
           URL.revokeObjectURL(img.url);
           continue;
         }
@@ -52,9 +50,6 @@ function ImageKitProApp() {
       merged.sort((a, b) => a.filename.localeCompare(b.filename));
       return merged;
     });
-    if (folder) {
-      setFolders((prev) => (prev.includes(folder) ? prev : [...prev, folder]));
-    }
     // Reset downstream state since image set changed
     setGroups([]);
     setUnmatchedIds([]);
@@ -80,7 +75,6 @@ function ImageKitProApp() {
   const removeAllImages = () => {
     images.forEach((i) => URL.revokeObjectURL(i.url));
     setImages([]);
-    setFolders([]);
     setGroups([]);
     setUnmatchedIds([]);
     setSkippedIds(new Set());
@@ -160,7 +154,6 @@ function ImageKitProApp() {
         {step === 1 && (
           <Step1Upload
             images={images}
-            folders={folders}
             removeBgApiKey={removeBgApiKey}
             onMerge={mergeImages}
             onRemove={removeImage}

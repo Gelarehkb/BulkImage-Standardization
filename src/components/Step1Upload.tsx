@@ -11,9 +11,8 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   images: LoadedImage[];
-  folders: string[];
   removeBgApiKey: string;
-  onMerge: (imgs: LoadedImage[], folder: string) => void;
+  onMerge: (imgs: LoadedImage[]) => void;
   onRemove: (id: string) => void;
   onRemoveAll: () => void;
   onReplace: (id: string, next: LoadedImage) => void;
@@ -22,7 +21,6 @@ interface Props {
 
 export function Step1Upload({
   images,
-  folders,
   removeBgApiKey,
   onMerge,
   onRemove,
@@ -31,7 +29,6 @@ export function Step1Upload({
   onContinue,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -45,13 +42,6 @@ export function Step1Upload({
 
       setLoading(true);
       setProgress({ done: 0, total: arr.length });
-
-      // Detect folder name
-      let folder = "";
-      const first = arr[0] as File & { webkitRelativePath?: string };
-      if (first.webkitRelativePath) {
-        folder = first.webkitRelativePath.split("/")[0] ?? "";
-      }
 
       const loaded: LoadedImage[] = [];
       for (let i = 0; i < arr.length; i++) {
@@ -76,7 +66,7 @@ export function Step1Upload({
         setProgress({ done: i + 1, total: arr.length });
       }
 
-      onMerge(loaded, folder);
+      onMerge(loaded);
       setLoading(false);
     },
     [onMerge],
@@ -162,7 +152,7 @@ export function Step1Upload({
           </div>
           <div>
             <h3 className="text-lg font-semibold">
-              {images.length > 0 ? "Add more images or folders" : "Drop images or a folder here"}
+              {images.length > 0 ? "Add more images" : "Drop images here"}
             </h3>
             <p className="mt-1 font-mono text-xs text-muted-foreground">
               PNG · JPG · WEBP — processed locally, never uploaded · duplicates skipped
@@ -171,33 +161,12 @@ export function Step1Upload({
           <div className="flex flex-wrap justify-center gap-2">
             <button
               type="button"
-              onClick={() => folderInputRef.current?.click()}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              📁 Select Folder
-            </button>
-            <button
-              type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium hover:bg-surface-elevated"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
               Select Files
             </button>
           </div>
-          <input
-            ref={folderInputRef}
-            type="file"
-            multiple
-            accept="image/*"
-            // @ts-expect-error non-standard attr
-            webkitdirectory=""
-            directory=""
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files) handleFiles(e.target.files);
-              e.target.value = "";
-            }}
-          />
           <input
             ref={fileInputRef}
             type="file"
@@ -234,12 +203,6 @@ export function Step1Upload({
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface px-4 py-3">
             <div className="font-mono text-xs">
               <span className="text-muted-foreground">{images.length} images loaded</span>
-              {folders.length > 0 && (
-                <>
-                  <span className="mx-2 text-muted-foreground">·</span>
-                  <span className="text-foreground">from: {folders.join(", ")}</span>
-                </>
-              )}
             </div>
             <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
               <span className="rounded-full border border-border bg-secondary px-2 py-0.5">
