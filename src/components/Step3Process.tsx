@@ -54,7 +54,7 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
         setProgress({ done: i, total, label: `${han}_${seq}.jpg` });
         try {
           const el = await loadImageElement(src.url);
-          const blob = await processToSquare(el, 1000);
+          const blob = await processToSquare(el, 1000, src.bg === "white");
           const url = URL.createObjectURL(blob);
           all.push({
             id: `${han}-${seq}`,
