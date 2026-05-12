@@ -144,6 +144,12 @@ export function Step2Sku({
     <div className="fade-in grid gap-6 lg:grid-cols-[380px_1fr]">
       {/* LEFT */}
       <div className="space-y-4">
+        <SkuFileImport
+          onPick={(skus) =>
+            onChange({ groups, unmatchedIds, skippedIds, skuText: skus.join("\n") })
+          }
+        />
+
         <div className="rounded-md border border-border bg-surface p-4">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
