@@ -74,8 +74,52 @@ export async function detectWhiteBg(img: HTMLImageElement): Promise<BgKind> {
   return avg > 238 ? "white" : "model";
 }
 
-/** Render image FILLING 1000x1000 white canvas (cover), return JPEG blob q=0.92 */
-export async function processToSquare(img: HTMLImageElement, size = 1000): Promise<Blob> {
+/**
+ * Find tight bounding box of non-white pixels (threshold-based).
+ * Returns null if image is fully white/empty.
+ */
+export function findContentBounds(
+  img: HTMLImageElement,
+  brightnessThreshold = 245,
+): { x: number; y: number; w: number; h: number } | null {
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const cx = c.getContext("2d");
+  if (!cx) return null;
+  cx.drawImage(img, 0, 0);
+  const { data, width, height } = cx.getImageData(0, 0, c.width, c.height);
+
+  let minX = width, minY = height, maxX = -1, maxY = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const a = data[i + 3];
+      if (a < 10) continue; // transparent counts as background
+      const b = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      if (b < brightnessThreshold) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0) return null;
+  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+}
+
+/**
+ * Render image to a `size`x`size` white canvas, return JPEG blob q=0.92.
+ * If `tightCrop` is true, the image is first cropped to its content bounding
+ * box and then scaled with "contain" so the product touches the canvas edges.
+ * Otherwise behaves as cover (fills the square).
+ */
+export async function processToSquare(
+  img: HTMLImageElement,
+  size = 1000,
+  tightCrop = false,
+): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
@@ -83,16 +127,31 @@ export async function processToSquare(img: HTMLImageElement, size = 1000): Promi
   if (!ctx) throw new Error("Canvas unsupported");
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, size, size);
-
-  // Cover: scale up so shorter side fills, then center-crop longer side
-  const scale = Math.max(size / img.naturalWidth, size / img.naturalHeight);
-  const w = img.naturalWidth * scale;
-  const h = img.naturalHeight * scale;
-  const x = (size - w) / 2;
-  const y = (size - h) / 2;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, x, y, w, h);
+
+  if (tightCrop) {
+    const bounds = findContentBounds(img);
+    if (bounds) {
+      // Contain: scale bbox so longest side equals `size`, center it.
+      const scale = Math.min(size / bounds.w, size / bounds.h);
+      const dw = bounds.w * scale;
+      const dh = bounds.h * scale;
+      const dx = (size - dw) / 2;
+      const dy = (size - dh) / 2;
+      ctx.drawImage(img, bounds.x, bounds.y, bounds.w, bounds.h, dx, dy, dw, dh);
+    } else {
+      // Fully white image — leave as-is
+    }
+  } else {
+    // Cover: scale up so shorter side fills, then center-crop longer side
+    const scale = Math.max(size / img.naturalWidth, size / img.naturalHeight);
+    const w = img.naturalWidth * scale;
+    const h = img.naturalHeight * scale;
+    const x = (size - w) / 2;
+    const y = (size - h) / 2;
+    ctx.drawImage(img, x, y, w, h);
+  }
 
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
