@@ -44,9 +44,34 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
     let i = 0;
     for (const g of validGroups) {
       const han = g.han.trim();
-      let seq = 0;
+
+      // Dedupe by basename (filename without extension, lowercased).
+      // If the same basename appears as both .png and .jpg, keep the JPG (or
+      // whichever was added last). This prevents duplicate processed outputs.
+      const byBase = new Map<string, string>(); // basename -> imageId
       for (const id of g.imageIds) {
         if (skippedIds.has(id)) continue;
+        const src = byId.current.get(id);
+        if (!src) continue;
+        const base = src.filename.replace(/\.[^.]+$/, "").toLowerCase();
+        const existingId = byBase.get(base);
+        if (!existingId) {
+          byBase.set(base, id);
+          continue;
+        }
+        const existing = byId.current.get(existingId)!;
+        const existingIsJpg = /\.jpe?g$/i.test(existing.filename);
+        const currentIsJpg = /\.jpe?g$/i.test(src.filename);
+        // Prefer JPG; otherwise keep the later one (current).
+        if (!existingIsJpg && currentIsJpg) byBase.set(base, id);
+        else if (existingIsJpg && !currentIsJpg) {
+          /* keep existing */
+        } else byBase.set(base, id);
+      }
+      const uniqueIds = Array.from(byBase.values());
+
+      let seq = 0;
+      for (const id of uniqueIds) {
         const src = byId.current.get(id);
         if (!src) continue;
         seq++;
@@ -63,8 +88,8 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
             blob,
             url,
           });
-        } catch {
-          // skip on error
+        } catch (err) {
+          console.error(`Failed to process ${src.filename}:`, err);
         }
       }
     }
