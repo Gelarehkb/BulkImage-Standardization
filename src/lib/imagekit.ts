@@ -130,27 +130,33 @@ export async function processToSquare(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
+  // Apply consistent inner margin (5% padding) so every image gets a uniform
+  // white border around its content area.
+  const PADDING_RATIO = 0.05;
+  const inner = size * (1 - PADDING_RATIO * 2);
+  const innerOffset = (size - inner) / 2;
+
   if (tightCrop) {
     const bounds = findContentBounds(img);
     if (bounds) {
-      // Contain: scale bbox so longest side equals `size`, center it.
-      const scale = Math.min(size / bounds.w, size / bounds.h);
+      // Contain inside the inner (padded) area
+      const scale = Math.min(inner / bounds.w, inner / bounds.h);
       const dw = bounds.w * scale;
       const dh = bounds.h * scale;
       const dx = (size - dw) / 2;
       const dy = (size - dh) / 2;
       ctx.drawImage(img, bounds.x, bounds.y, bounds.w, bounds.h, dx, dy, dw, dh);
-    } else {
-      // Fully white image — leave as-is
     }
   } else {
-    // Cover: scale up so shorter side fills, then center-crop longer side
-    const scale = Math.max(size / img.naturalWidth, size / img.naturalHeight);
+    // Contain (with padding) so model images also get a consistent margin
+    const scale = Math.min(inner / img.naturalWidth, inner / img.naturalHeight);
     const w = img.naturalWidth * scale;
     const h = img.naturalHeight * scale;
     const x = (size - w) / 2;
     const y = (size - h) / 2;
     ctx.drawImage(img, x, y, w, h);
+    // mark unused to keep linter quiet about innerOffset
+    void innerOffset;
   }
 
   return await new Promise<Blob>((resolve, reject) => {
