@@ -35,10 +35,16 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
     setProcessing(true);
     setDone(false);
     const all: ProcessedImage[] = [];
-    const total = validGroups.reduce(
-      (acc, g) => acc + g.imageIds.filter((id) => !skippedIds.has(id)).length,
-      0,
-    );
+    const total = validGroups.reduce((acc, g) => {
+      const bases = new Set<string>();
+      for (const id of g.imageIds) {
+        if (skippedIds.has(id)) continue;
+        const src = byId.current.get(id);
+        if (!src) continue;
+        bases.add(src.filename.replace(/\.[^.]+$/, "").toLowerCase());
+      }
+      return acc + bases.size;
+    }, 0);
     setProgress({ done: 0, total, label: "" });
 
     let i = 0;
