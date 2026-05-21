@@ -123,18 +123,20 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
   };
 
   const downloadCsv = () => {
-    const lines: string[] = ["han;Bild1;Bild2;Bild3;Bild4"];
+    const maxImages = Math.max(0, ...Object.values(grouped).map((items) => items.length));
+    const header = ["han", ...Array.from({ length: maxImages }, (_, i) => `Bild${i + 1}`)].join(";");
+    const lines: string[] = [header];
     // Group processed by HAN preserving order from validGroups
-    const grouped = new Map<string, string[]>();
+    const groupedFiles = new Map<string, string[]>();
     for (const p of processed) {
-      if (!grouped.has(p.han)) grouped.set(p.han, []);
-      grouped.get(p.han)!.push(p.filename);
+      if (!groupedFiles.has(p.han)) groupedFiles.set(p.han, []);
+      groupedFiles.get(p.han)!.push(p.filename);
     }
     for (const g of validGroups) {
       const han = g.han.trim();
-      const files = grouped.get(han) ?? [];
+      const files = groupedFiles.get(han) ?? [];
       if (files.length === 0) continue;
-      const cells = [files[0] ?? "", files[1] ?? "", files[2] ?? "", files[3] ?? ""];
+      const cells = Array.from({ length: maxImages }, (_, i) => files[i] ?? "");
       lines.push([han, ...cells].join(";"));
     }
     const csv = "\uFEFF" + lines.join("\r\n");
@@ -153,9 +155,11 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
     .map((g) => {
       const han = g.han.trim();
       const files = (grouped[han] ?? []).map((p) => p.filename);
-      return { han, count: files.length, b: [files[0], files[1], files[2], files[3]] };
+      return { han, count: files.length, files };
     })
     .filter((r) => r.count > 0);
+
+  const maxImages = Math.max(0, ...summary.map((r) => r.count));
 
   return (
     <div className="fade-in space-y-6">
@@ -238,10 +242,9 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
                 <tr className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                   <th className="px-3 py-2 text-left">HAN</th>
                   <th className="px-3 py-2 text-left">Processed</th>
-                  <th className="px-3 py-2 text-left">Bild1</th>
-                  <th className="px-3 py-2 text-left">Bild2</th>
-                  <th className="px-3 py-2 text-left">Bild3</th>
-                  <th className="px-3 py-2 text-left">Bild4</th>
+                  {Array.from({ length: maxImages }, (_, i) => (
+                    <th key={i} className="px-3 py-2 text-left">{`Bild${i + 1}`}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border font-mono text-xs">
@@ -249,15 +252,14 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
                   <tr key={r.han}>
                     <td className="px-3 py-2 font-semibold">{r.han}</td>
                     <td className="px-3 py-2 text-muted-foreground">{r.count}</td>
-                    <td className="px-3 py-2">{r.b[0] ?? ""}</td>
-                    <td className="px-3 py-2">{r.b[1] ?? ""}</td>
-                    <td className="px-3 py-2">{r.b[2] ?? ""}</td>
-                    <td className="px-3 py-2">{r.b[3] ?? ""}</td>
+                    {Array.from({ length: maxImages }, (_, i) => (
+                      <td key={i} className="px-3 py-2">{r.files[i] ?? ""}</td>
+                    ))}
                   </tr>
                 ))}
                 {summary.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
+                    <td colSpan={2 + maxImages} className="px-3 py-6 text-center text-muted-foreground">
                       Nothing to export
                     </td>
                   </tr>
