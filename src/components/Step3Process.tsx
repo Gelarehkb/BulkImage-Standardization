@@ -200,7 +200,14 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
             <span className="font-mono text-xs text-success">
               ✅ Done · {processed.length} images processed across {Object.keys(grouped).length} groups
             </span>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="add label..."
+                className="h-9 w-44 rounded-md border border-border bg-surface px-3 font-mono text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
               <button
                 type="button"
                 onClick={downloadZip}
