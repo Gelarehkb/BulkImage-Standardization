@@ -18,6 +18,7 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
   const [progress, setProgress] = useState({ done: 0, total: 0, label: "" });
   const [processed, setProcessed] = useState<ProcessedImage[]>([]);
   const [zipping, setZipping] = useState(false);
+  const [label, setLabel] = useState("");
   const startedRef = useRef(false);
 
   const validGroups = groups.filter(
@@ -105,15 +106,26 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
     setDone(true);
   };
 
+  const buildExportName = () => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const date = `${yyyy}-${mm}-${dd}`;
+    const trimmed = label.trim();
+    return trimmed ? `${date} ${trimmed} converted` : `${date} converted`;
+  };
+
   const downloadZip = async () => {
     setZipping(true);
     try {
       const zip = new JSZip();
-      const folder = zip.folder("processed");
+      const name = buildExportName();
+      const folder = zip.folder(name);
       if (!folder) throw new Error("Failed to create folder");
       for (const p of processed) folder.file(p.filename, p.blob);
       const blob = await zip.generateAsync({ type: "blob" });
-      downloadBlob(blob, "processed_images.zip");
+      downloadBlob(blob, `${name}.zip`);
     } catch (e) {
       console.error(e);
       alert("Failed to build ZIP. Please try again.");
@@ -188,7 +200,14 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
             <span className="font-mono text-xs text-success">
               ✅ Done · {processed.length} images processed across {Object.keys(grouped).length} groups
             </span>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="add label..."
+                className="h-9 w-44 rounded-md border border-border bg-surface px-3 font-mono text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
               <button
                 type="button"
                 onClick={downloadZip}
