@@ -130,8 +130,6 @@ export async function processToSquare(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
-  // Apply consistent inner margin (5% padding) so every image gets a uniform
-  // white border around its content area.
   const PADDING_RATIO = 0.05;
   const inner = size * (1 - PADDING_RATIO * 2);
   const innerOffset = (size - inner) / 2;
@@ -139,7 +137,6 @@ export async function processToSquare(
   if (tightCrop) {
     const bounds = findContentBounds(img);
     if (bounds) {
-      // Contain inside the inner (padded) area
       const scale = Math.min(inner / bounds.w, inner / bounds.h);
       const dw = bounds.w * scale;
       const dh = bounds.h * scale;
@@ -148,24 +145,50 @@ export async function processToSquare(
       ctx.drawImage(img, bounds.x, bounds.y, bounds.w, bounds.h, dx, dy, dw, dh);
     }
   } else {
-    // Contain (with padding) so model images also get a consistent margin
     const scale = Math.min(inner / img.naturalWidth, inner / img.naturalHeight);
     const w = img.naturalWidth * scale;
     const h = img.naturalHeight * scale;
     const x = (size - w) / 2;
     const y = (size - h) / 2;
     ctx.drawImage(img, x, y, w, h);
-    // mark unused to keep linter quiet about innerOffset
     void innerOffset;
   }
 
-  return await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
-      "image/jpeg",
-      0.92,
-    );
-  });
+  const encode = (q: number) =>
+    new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
+        "image/jpeg",
+        q,
+      );
+    });
+
+  const MIN = 50 * 1024;
+  const MAX = 250 * 1024;
+  let q = 0.92;
+  let blob = await encode(q);
+
+  if (blob.size > MAX) {
+    while (blob.size > MAX && q > 0.2) {
+      q = Math.max(0.2, q - 0.05);
+      blob = await encode(q);
+    }
+  } else if (blob.size < MIN) {
+    let bestBlob = blob;
+    q = 0.95;
+    while (q <= 1.0) {
+      const next = await encode(Math.min(1, q));
+      if (next.size > bestBlob.size) bestBlob = next;
+      if (next.size >= MIN) {
+        bestBlob = next;
+        break;
+      }
+      q = +(q + 0.05).toFixed(2);
+    }
+    blob = bestBlob;
+  }
+
+  return blob;
 }
 
 export function downloadBlob(blob: Blob, filename: string) {
