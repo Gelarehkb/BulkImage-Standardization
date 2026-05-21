@@ -237,19 +237,36 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {items.map((p) => (
-                    <div
-                      key={p.id}
-                      className="rounded-md border border-border bg-surface p-2"
-                    >
-                      <div className="aspect-square overflow-hidden rounded bg-white">
-                        <img src={p.url} alt={p.filename} className="h-full w-full object-contain" />
+                  {items.map((p) => {
+                    const kib = p.blob.size / 1024;
+                    const outOfRange = kib < 50 || kib > 250;
+                    const sizeStr = `${kib.toFixed(0)} KiB`;
+                    return (
+                      <div
+                        key={p.id}
+                        className="rounded-md border border-border bg-surface p-2"
+                      >
+                        <div className="aspect-square overflow-hidden rounded bg-white">
+                          <img src={p.url} alt={p.filename} className="h-full w-full object-contain" />
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-2 px-0.5">
+                          <div className="truncate font-mono text-[11px]" title={p.filename}>
+                            {p.filename}
+                          </div>
+                          <span
+                            className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] ${
+                              outOfRange
+                                ? "bg-warning/10 text-warning"
+                                : "text-muted-foreground"
+                            }`}
+                            title={outOfRange ? "Out of 50–250 KiB range" : "File size"}
+                          >
+                            {outOfRange ? `⚠ ${sizeStr}` : sizeStr}
+                          </span>
+                        </div>
                       </div>
-                      <div className="mt-2 truncate px-0.5 font-mono text-[11px]" title={p.filename}>
-                        {p.filename}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}
