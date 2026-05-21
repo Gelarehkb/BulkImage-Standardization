@@ -106,15 +106,26 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
     setDone(true);
   };
 
+  const buildExportName = () => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const date = `${yyyy}-${mm}-${dd}`;
+    const trimmed = label.trim();
+    return trimmed ? `${date} ${trimmed} converted` : `${date} converted`;
+  };
+
   const downloadZip = async () => {
     setZipping(true);
     try {
       const zip = new JSZip();
-      const folder = zip.folder("processed");
+      const name = buildExportName();
+      const folder = zip.folder(name);
       if (!folder) throw new Error("Failed to create folder");
       for (const p of processed) folder.file(p.filename, p.blob);
       const blob = await zip.generateAsync({ type: "blob" });
-      downloadBlob(blob, "processed_images.zip");
+      downloadBlob(blob, `${name}.zip`);
     } catch (e) {
       console.error(e);
       alert("Failed to build ZIP. Please try again.");
