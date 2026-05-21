@@ -18,6 +18,7 @@ export function Step3Process({ images, groups, skippedIds }: Props) {
   const [progress, setProgress] = useState({ done: 0, total: 0, label: "" });
   const [processed, setProcessed] = useState<ProcessedImage[]>([]);
   const [zipping, setZipping] = useState(false);
+  const [label, setLabel] = useState("");
   const startedRef = useRef(false);
 
   const validGroups = groups.filter(
