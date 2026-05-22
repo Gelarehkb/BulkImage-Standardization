@@ -110,49 +110,31 @@ export function findContentBounds(
 }
 
 /**
- * Render image to a `size`x`size` white canvas, return JPEG blob q=0.92.
- * If `tightCrop` is true, the image is first cropped to its content bounding
- * box and then scaled with "contain" so the product touches the canvas edges.
- * Otherwise behaves as cover (fills the square).
+ * Render image to a `size`x`size` JPEG using center-crop-to-square (cover).
+ * Always crops the largest centered square from the source and scales it to fill
+ * the full canvas — never adds padding or letterboxing. The `tightCrop` flag is
+ * accepted for backward compatibility but ignored.
  */
 export async function processToSquare(
   img: HTMLImageElement,
   size = 1000,
-  tightCrop = false,
+  _tightCrop = false,
 ): Promise<Blob> {
+  void _tightCrop;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas unsupported");
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillRect(0, 0, size, size);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
-  const PADDING_RATIO = 0.05;
-  const inner = size * (1 - PADDING_RATIO * 2);
-  const innerOffset = (size - inner) / 2;
-
-  if (tightCrop) {
-    const bounds = findContentBounds(img);
-    if (bounds) {
-      const scale = Math.min(inner / bounds.w, inner / bounds.h);
-      const dw = bounds.w * scale;
-      const dh = bounds.h * scale;
-      const dx = (size - dw) / 2;
-      const dy = (size - dh) / 2;
-      ctx.drawImage(img, bounds.x, bounds.y, bounds.w, bounds.h, dx, dy, dw, dh);
-    }
-  } else {
-    const scale = Math.min(inner / img.naturalWidth, inner / img.naturalHeight);
-    const w = img.naturalWidth * scale;
-    const h = img.naturalHeight * scale;
-    const x = (size - w) / 2;
-    const y = (size - h) / 2;
-    ctx.drawImage(img, x, y, w, h);
-    void innerOffset;
-  }
+  const sw = img.naturalWidth;
+  const sh = img.naturalHeight;
+  const side = Math.min(sw, sh);
+  const sx = Math.floor((sw - side) / 2);
+  const sy = Math.floor((sh - side) / 2);
+  ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
 
   const encode = (q: number) =>
     new Promise<Blob>((resolve, reject) => {
