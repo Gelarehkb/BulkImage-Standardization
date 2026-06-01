@@ -138,6 +138,18 @@ export function Step2Sku({
     onChange({ groups, unmatchedIds, skippedIds: next, skuText });
   };
 
+  const removeFromGroup = (han: string, imageId: string) => {
+    onChange({
+      groups: groups.map((g) =>
+        g.han === han ? { ...g, imageIds: g.imageIds.filter((i) => i !== imageId) } : g,
+      ),
+      unmatchedIds: unmatchedIds.includes(imageId) ? unmatchedIds : [...unmatchedIds, imageId],
+      skippedIds,
+      skuText,
+    });
+  };
+
+
   const hasMatched = groups.length > 0 || unmatchedIds.length > 0;
 
   return (
