@@ -420,9 +420,17 @@ function GroupRow({
                 <span className="absolute bottom-0 left-0 bg-background/80 px-1 font-mono text-[9px]">
                   {idx + 1}
                 </span>
-                <span className="absolute right-0.5 top-0.5 rounded bg-background/70 px-1 font-mono text-[9px] opacity-0 transition group-hover/thumb:opacity-100">
-                  ⋮⋮
-                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove(id);
+                  }}
+                  aria-label="Remove from group"
+                  className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-background/90 font-mono text-[10px] leading-none text-foreground opacity-0 transition hover:bg-destructive hover:text-destructive-foreground group-hover/thumb:opacity-100"
+                >
+                  ×
+                </button>
               </div>
             );
           })}
