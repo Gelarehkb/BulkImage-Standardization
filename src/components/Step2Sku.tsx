@@ -259,6 +259,7 @@ export function Step2Sku({
                       byId={byId}
                       onUpdateHan={(v) => updateHan(g.han, v)}
                       onReorder={(from, to) => reorderInGroup(g.han, from, to)}
+                      onRemove={(id) => removeFromGroup(g.han, id)}
                     />
                   ))}
                   {groups.length === 0 && (
