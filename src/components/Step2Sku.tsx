@@ -369,11 +369,13 @@ function GroupRow({
   byId,
   onUpdateHan,
   onReorder,
+  onRemove,
 }: {
   group: SkuGroup;
   byId: Map<string, LoadedImage>;
   onUpdateHan: (v: string) => void;
   onReorder: (from: number, to: number) => void;
+  onRemove: (id: string) => void;
 }) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const ready = group.imageIds.length > 0;
