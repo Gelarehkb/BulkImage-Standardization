@@ -138,6 +138,18 @@ export function Step2Sku({
     onChange({ groups, unmatchedIds, skippedIds: next, skuText });
   };
 
+  const removeFromGroup = (han: string, imageId: string) => {
+    onChange({
+      groups: groups.map((g) =>
+        g.han === han ? { ...g, imageIds: g.imageIds.filter((i) => i !== imageId) } : g,
+      ),
+      unmatchedIds: unmatchedIds.includes(imageId) ? unmatchedIds : [...unmatchedIds, imageId],
+      skippedIds,
+      skuText,
+    });
+  };
+
+
   const hasMatched = groups.length > 0 || unmatchedIds.length > 0;
 
   return (
@@ -247,6 +259,7 @@ export function Step2Sku({
                       byId={byId}
                       onUpdateHan={(v) => updateHan(g.han, v)}
                       onReorder={(from, to) => reorderInGroup(g.han, from, to)}
+                      onRemove={(id) => removeFromGroup(g.han, id)}
                     />
                   ))}
                   {groups.length === 0 && (
@@ -356,11 +369,13 @@ function GroupRow({
   byId,
   onUpdateHan,
   onReorder,
+  onRemove,
 }: {
   group: SkuGroup;
   byId: Map<string, LoadedImage>;
   onUpdateHan: (v: string) => void;
   onReorder: (from: number, to: number) => void;
+  onRemove: (id: string) => void;
 }) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const ready = group.imageIds.length > 0;
@@ -405,9 +420,17 @@ function GroupRow({
                 <span className="absolute bottom-0 left-0 bg-background/80 px-1 font-mono text-[9px]">
                   {idx + 1}
                 </span>
-                <span className="absolute right-0.5 top-0.5 rounded bg-background/70 px-1 font-mono text-[9px] opacity-0 transition group-hover/thumb:opacity-100">
-                  ⋮⋮
-                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove(id);
+                  }}
+                  aria-label="Remove from group"
+                  className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-background/90 font-mono text-[10px] leading-none text-foreground opacity-0 transition hover:bg-destructive hover:text-destructive-foreground group-hover/thumb:opacity-100"
+                >
+                  ×
+                </button>
               </div>
             );
           })}
