@@ -110,17 +110,17 @@ export function findContentBounds(
 }
 
 /**
- * Render image to a `size`x`size` JPEG using center-crop-to-square (cover).
- * Always crops the largest centered square from the source and scales it to fill
- * the full canvas — never adds padding or letterboxing. The `tightCrop` flag is
- * accepted for backward compatibility but ignored.
+ * Render image to a `size`x`size` JPEG.
+ * - White-bg images: tight-crop to the product's bounding box (no padding/margin),
+ *   expanded to a square centered on the bbox so the product touches or nearly
+ *   touches all 4 edges of the output frame.
+ * - Other images: center-crop the largest centered square (cover).
  */
 export async function processToSquare(
   img: HTMLImageElement,
   size = 1000,
-  _tightCrop = false,
+  isWhiteBg = false,
 ): Promise<Blob> {
-  void _tightCrop;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
@@ -131,10 +131,32 @@ export async function processToSquare(
 
   const sw = img.naturalWidth;
   const sh = img.naturalHeight;
-  const side = Math.min(sw, sh);
-  const sx = Math.floor((sw - side) / 2);
-  const sy = Math.floor((sh - side) / 2);
-  ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+
+  let sx: number, sy: number, sSide: number;
+
+  const bounds = isWhiteBg ? findContentBounds(img) : null;
+  if (bounds) {
+    // Expand bbox to a centered square, clamped to image extents.
+    const maxSide = Math.min(sw, sh);
+    const side = Math.min(Math.max(bounds.w, bounds.h), maxSide);
+    const cx = bounds.x + bounds.w / 2;
+    const cy = bounds.y + bounds.h / 2;
+    let x = Math.round(cx - side / 2);
+    let y = Math.round(cy - side / 2);
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (x + side > sw) x = sw - side;
+    if (y + side > sh) y = sh - side;
+    sx = x;
+    sy = y;
+    sSide = side;
+  } else {
+    sSide = Math.min(sw, sh);
+    sx = Math.floor((sw - sSide) / 2);
+    sy = Math.floor((sh - sSide) / 2);
+  }
+
+  ctx.drawImage(img, sx, sy, sSide, sSide, 0, 0, size, size);
 
   const encode = (q: number) =>
     new Promise<Blob>((resolve, reject) => {
