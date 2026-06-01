@@ -378,8 +378,9 @@ function GroupRow({
   onRemove: (id: string) => void;
 }) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const ready = group.imageIds.length > 0;
-  const visible = group.imageIds.slice(0, 5);
+  const visible = expanded ? group.imageIds : group.imageIds.slice(0, 5);
   const extra = group.imageIds.length - visible.length;
 
   return (
@@ -395,7 +396,7 @@ function GroupRow({
         <span className="font-mono text-xs">{group.imageIds.length}</span>
       </td>
       <td className="px-3 py-2 align-middle">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {visible.map((id, idx) => {
             const img = byId.get(id);
             if (!img) return null;
@@ -435,7 +436,14 @@ function GroupRow({
             );
           })}
           {extra > 0 && (
-            <span className="font-mono text-[11px] text-muted-foreground">+{extra}</span>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[11px] text-muted-foreground hover:bg-surface-elevated hover:text-foreground"
+              title={expanded ? "Show fewer" : `Show ${extra} more`}
+            >
+              {expanded ? "−" : `+${extra}`}
+            </button>
           )}
         </div>
       </td>
