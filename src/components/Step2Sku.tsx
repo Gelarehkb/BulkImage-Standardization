@@ -472,14 +472,20 @@ function GroupRow({
                   const raw = e.dataTransfer.getData("application/x-han-image");
                   let fromHan: string | null = null;
                   let imageId: string | null = null;
+                  let hasPayload = false;
                   try {
                     const p = JSON.parse(raw);
                     fromHan = p.fromHan;
                     imageId = p.imageId;
+                    hasPayload = true;
                   } catch {
                     /* ignore */
                   }
-                  if (fromHan && fromHan !== group.han && imageId) {
+                  if (hasPayload && imageId && fromHan === null) {
+                    e.stopPropagation();
+                    setDragOver(false);
+                    onAssignUnmatched(imageId);
+                  } else if (hasPayload && fromHan && fromHan !== group.han && imageId) {
                     e.stopPropagation();
                     setDragOver(false);
                     onMoveIn(fromHan, imageId);
