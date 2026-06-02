@@ -149,6 +149,24 @@ export function Step2Sku({
     });
   };
 
+  const moveBetweenGroups = (fromHan: string, toHan: string, imageId: string) => {
+    if (fromHan === toHan) return;
+    onChange({
+      groups: groups.map((g) => {
+        if (g.han === fromHan) return { ...g, imageIds: g.imageIds.filter((i) => i !== imageId) };
+        if (g.han === toHan)
+          return {
+            ...g,
+            imageIds: g.imageIds.includes(imageId) ? g.imageIds : [...g.imageIds, imageId],
+          };
+        return g;
+      }),
+      unmatchedIds,
+      skippedIds,
+      skuText,
+    });
+  };
+
 
   const hasMatched = groups.length > 0 || unmatchedIds.length > 0;
 
