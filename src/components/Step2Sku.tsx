@@ -391,6 +391,7 @@ function GroupRow({
   onReorder,
   onRemove,
   onMoveIn,
+  onAssignUnmatched,
 }: {
   group: SkuGroup;
   byId: Map<string, LoadedImage>;
@@ -398,6 +399,7 @@ function GroupRow({
   onReorder: (from: number, to: number) => void;
   onRemove: (id: string) => void;
   onMoveIn: (fromHan: string, imageId: string) => void;
+  onAssignUnmatched: (imageId: string) => void;
 }) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -412,8 +414,10 @@ function GroupRow({
     const raw = e.dataTransfer.getData("application/x-han-image");
     if (!raw) return;
     try {
-      const { fromHan, imageId } = JSON.parse(raw) as { fromHan: string; imageId: string };
-      if (fromHan && fromHan !== group.han) onMoveIn(fromHan, imageId);
+      const { fromHan, imageId } = JSON.parse(raw) as { fromHan: string | null; imageId: string };
+      if (!imageId) return;
+      if (fromHan === null) onAssignUnmatched(imageId);
+      else if (fromHan !== group.han) onMoveIn(fromHan, imageId);
     } catch {
       /* ignore */
     }
