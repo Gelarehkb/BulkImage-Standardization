@@ -539,8 +539,8 @@ function GroupRow({
             </button>
           )}
           {group.imageIds.length === 0 && (
-            <span className="font-mono text-[10px] text-muted-foreground">
-              drop image here
+            <span className="rounded border border-dashed border-warning/40 px-2 py-1 font-mono text-[10px] text-muted-foreground">
+              drop unassigned image here
             </span>
           )}
         </div>
