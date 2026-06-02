@@ -316,16 +316,25 @@ export function Step2Sku({
                       return (
                         <div
                           key={id}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData(
+                              "application/x-han-image",
+                              JSON.stringify({ fromHan: null, imageId: id }),
+                            );
+                          }}
                           className={cn(
-                            "rounded-md border border-border bg-surface p-2",
+                            "cursor-grab rounded-md border border-border bg-surface p-2 active:cursor-grabbing",
                             skipped && "opacity-50",
                           )}
+                          title="Drag onto a HAN row to assign"
                         >
                           <div className="flex gap-3">
                             <img
                               src={img.url}
                               alt=""
-                              className="h-16 w-16 shrink-0 rounded object-cover"
+                              className="pointer-events-none h-16 w-16 shrink-0 rounded object-cover"
                             />
                             <div className="min-w-0 flex-1">
                               <div className="truncate font-mono text-[11px]" title={img.filename}>
