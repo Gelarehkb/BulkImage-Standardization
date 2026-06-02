@@ -108,7 +108,7 @@ function ImageKitProApp() {
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden font-mono text-[10px] uppercase tracking-wider text-muted-foreground md:block">
-              v1.2 · 100% local · no upload · no tracking
+              v1.2
             </span>
           </div>
         </div>
