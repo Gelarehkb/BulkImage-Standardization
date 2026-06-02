@@ -279,6 +279,7 @@ export function Step2Sku({
                       onReorder={(from, to) => reorderInGroup(g.han, from, to)}
                       onRemove={(id) => removeFromGroup(g.han, id)}
                       onMoveIn={(fromHan, imageId) => moveBetweenGroups(fromHan, g.han, imageId)}
+                      onAssignUnmatched={(imageId) => assignToGroup(imageId, g.han)}
                     />
                   ))}
                   {groups.length === 0 && (
@@ -315,16 +316,25 @@ export function Step2Sku({
                       return (
                         <div
                           key={id}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData(
+                              "application/x-han-image",
+                              JSON.stringify({ fromHan: null, imageId: id }),
+                            );
+                          }}
                           className={cn(
-                            "rounded-md border border-border bg-surface p-2",
+                            "cursor-grab rounded-md border border-border bg-surface p-2 active:cursor-grabbing",
                             skipped && "opacity-50",
                           )}
+                          title="Drag onto a HAN row to assign"
                         >
                           <div className="flex gap-3">
                             <img
                               src={img.url}
                               alt=""
-                              className="h-16 w-16 shrink-0 rounded object-cover"
+                              className="pointer-events-none h-16 w-16 shrink-0 rounded object-cover"
                             />
                             <div className="min-w-0 flex-1">
                               <div className="truncate font-mono text-[11px]" title={img.filename}>
@@ -390,6 +400,7 @@ function GroupRow({
   onReorder,
   onRemove,
   onMoveIn,
+  onAssignUnmatched,
 }: {
   group: SkuGroup;
   byId: Map<string, LoadedImage>;
@@ -397,6 +408,7 @@ function GroupRow({
   onReorder: (from: number, to: number) => void;
   onRemove: (id: string) => void;
   onMoveIn: (fromHan: string, imageId: string) => void;
+  onAssignUnmatched: (imageId: string) => void;
 }) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -411,8 +423,10 @@ function GroupRow({
     const raw = e.dataTransfer.getData("application/x-han-image");
     if (!raw) return;
     try {
-      const { fromHan, imageId } = JSON.parse(raw) as { fromHan: string; imageId: string };
-      if (fromHan && fromHan !== group.han) onMoveIn(fromHan, imageId);
+      const { fromHan, imageId } = JSON.parse(raw) as { fromHan: string | null; imageId: string };
+      if (!imageId) return;
+      if (fromHan === null) onAssignUnmatched(imageId);
+      else if (fromHan !== group.han) onMoveIn(fromHan, imageId);
     } catch {
       /* ignore */
     }
@@ -467,14 +481,20 @@ function GroupRow({
                   const raw = e.dataTransfer.getData("application/x-han-image");
                   let fromHan: string | null = null;
                   let imageId: string | null = null;
+                  let hasPayload = false;
                   try {
                     const p = JSON.parse(raw);
                     fromHan = p.fromHan;
                     imageId = p.imageId;
+                    hasPayload = true;
                   } catch {
                     /* ignore */
                   }
-                  if (fromHan && fromHan !== group.han && imageId) {
+                  if (hasPayload && imageId && fromHan === null) {
+                    e.stopPropagation();
+                    setDragOver(false);
+                    onAssignUnmatched(imageId);
+                  } else if (hasPayload && fromHan && fromHan !== group.han && imageId) {
                     e.stopPropagation();
                     setDragOver(false);
                     onMoveIn(fromHan, imageId);
@@ -519,8 +539,8 @@ function GroupRow({
             </button>
           )}
           {group.imageIds.length === 0 && (
-            <span className="font-mono text-[10px] text-muted-foreground">
-              drop image here
+            <span className="rounded border border-dashed border-warning/40 px-2 py-1 font-mono text-[10px] text-muted-foreground">
+              drop unassigned image here
             </span>
           )}
         </div>
