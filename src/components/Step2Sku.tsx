@@ -149,6 +149,24 @@ export function Step2Sku({
     });
   };
 
+  const moveBetweenGroups = (fromHan: string, toHan: string, imageId: string) => {
+    if (fromHan === toHan) return;
+    onChange({
+      groups: groups.map((g) => {
+        if (g.han === fromHan) return { ...g, imageIds: g.imageIds.filter((i) => i !== imageId) };
+        if (g.han === toHan)
+          return {
+            ...g,
+            imageIds: g.imageIds.includes(imageId) ? g.imageIds : [...g.imageIds, imageId],
+          };
+        return g;
+      }),
+      unmatchedIds,
+      skippedIds,
+      skuText,
+    });
+  };
+
 
   const hasMatched = groups.length > 0 || unmatchedIds.length > 0;
 
@@ -260,6 +278,7 @@ export function Step2Sku({
                       onUpdateHan={(v) => updateHan(g.han, v)}
                       onReorder={(from, to) => reorderInGroup(g.han, from, to)}
                       onRemove={(id) => removeFromGroup(g.han, id)}
+                      onMoveIn={(fromHan, imageId) => moveBetweenGroups(fromHan, g.han, imageId)}
                     />
                   ))}
                   {groups.length === 0 && (
@@ -370,18 +389,34 @@ function GroupRow({
   onUpdateHan,
   onReorder,
   onRemove,
+  onMoveIn,
 }: {
   group: SkuGroup;
   byId: Map<string, LoadedImage>;
   onUpdateHan: (v: string) => void;
   onReorder: (from: number, to: number) => void;
   onRemove: (id: string) => void;
+  onMoveIn: (fromHan: string, imageId: string) => void;
 }) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const ready = group.imageIds.length > 0;
   const visible = expanded ? group.imageIds : group.imageIds.slice(0, 5);
   const extra = group.imageIds.length - visible.length;
+
+  const handleCellDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const raw = e.dataTransfer.getData("application/x-han-image");
+    if (!raw) return;
+    try {
+      const { fromHan, imageId } = JSON.parse(raw) as { fromHan: string; imageId: string };
+      if (fromHan && fromHan !== group.han) onMoveIn(fromHan, imageId);
+    } catch {
+      /* ignore */
+    }
+  };
 
   return (
     <tr className="hover:bg-surface-elevated/50">
@@ -395,8 +430,21 @@ function GroupRow({
       <td className="px-3 py-2 align-middle">
         <span className="font-mono text-xs">{group.imageIds.length}</span>
       </td>
-      <td className="px-3 py-2 align-middle">
-        <div className="flex flex-wrap items-center gap-2">
+      <td
+        className="px-3 py-2 align-middle"
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleCellDrop}
+      >
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-2 rounded-md p-1 transition",
+            dragOver && "bg-primary/10 ring-2 ring-primary/40",
+          )}
+        >
           {visible.map((id, idx) => {
             const img = byId.get(id);
             if (!img) return null;
@@ -404,11 +452,36 @@ function GroupRow({
               <div
                 key={id}
                 draggable
-                onDragStart={() => setDragIdx(idx)}
+                onDragStart={(e) => {
+                  setDragIdx(idx);
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData(
+                    "application/x-han-image",
+                    JSON.stringify({ fromHan: group.han, imageId: id }),
+                  );
+                }}
+                onDragEnd={() => setDragIdx(null)}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault();
-                  if (dragIdx !== null && dragIdx !== idx) onReorder(dragIdx, idx);
+                  const raw = e.dataTransfer.getData("application/x-han-image");
+                  let fromHan: string | null = null;
+                  let imageId: string | null = null;
+                  try {
+                    const p = JSON.parse(raw);
+                    fromHan = p.fromHan;
+                    imageId = p.imageId;
+                  } catch {
+                    /* ignore */
+                  }
+                  if (fromHan && fromHan !== group.han && imageId) {
+                    e.stopPropagation();
+                    setDragOver(false);
+                    onMoveIn(fromHan, imageId);
+                  } else if (dragIdx !== null && dragIdx !== idx) {
+                    e.stopPropagation();
+                    onReorder(dragIdx, idx);
+                  }
                   setDragIdx(null);
                 }}
                 className={cn(
@@ -444,6 +517,11 @@ function GroupRow({
             >
               {expanded ? "−" : `+${extra}`}
             </button>
+          )}
+          {group.imageIds.length === 0 && (
+            <span className="font-mono text-[10px] text-muted-foreground">
+              drop image here
+            </span>
           )}
         </div>
       </td>
