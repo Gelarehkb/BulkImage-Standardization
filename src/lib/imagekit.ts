@@ -128,6 +128,12 @@ export async function processToSquare(
   if (!ctx) throw new Error("Canvas unsupported");
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
+  // Always paint a white background first so any transparent pixels
+  // in the source (PNG/WebP with alpha) become white instead of black
+  // when encoded to JPEG.
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, size, size);
+
 
   const sw = img.naturalWidth;
   const sh = img.naturalHeight;
