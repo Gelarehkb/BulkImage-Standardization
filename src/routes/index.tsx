@@ -91,6 +91,11 @@ function ImageKitProApp() {
     });
   };
 
+  const addImage = (img: LoadedImage) => {
+    setImages((prev) => [...prev, img]);
+  };
+
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-surface/30">
