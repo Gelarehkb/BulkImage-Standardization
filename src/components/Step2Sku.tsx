@@ -10,8 +10,10 @@ interface Props {
   unmatchedIds: string[];
   skippedIds: Set<string>;
   skuText: string;
-  
+  maxOutputKiB: number;
+  onMaxOutputKiBChange: (n: number) => void;
   onReplace: (id: string, next: LoadedImage) => void;
+  onAddImage: (img: LoadedImage) => void;
   onChange: (state: {
     groups: SkuGroup[];
     unmatchedIds: string[];
@@ -27,11 +29,14 @@ export function Step2Sku({
   unmatchedIds,
   skippedIds,
   skuText,
-  
+  maxOutputKiB,
+  onMaxOutputKiBChange,
   onReplace,
+  onAddImage,
   onChange,
   onContinue,
 }: Props) {
+
   const [assignInputs, setAssignInputs] = useState<Record<string, string>>({});
   const [unmatchedOpen, setUnmatchedOpen] = useState(true);
   const [batchBg, setBatchBg] = useState<{ active: boolean; done: number; total: number; failed: number }>(
