@@ -489,6 +489,7 @@ function GroupRow({
   onRemove,
   onMoveIn,
   onAssignUnmatched,
+  onDuplicate,
 }: {
   group: SkuGroup;
   byId: Map<string, LoadedImage>;
@@ -497,7 +498,9 @@ function GroupRow({
   onRemove: (id: string) => void;
   onMoveIn: (fromHan: string, imageId: string) => void;
   onAssignUnmatched: (imageId: string) => void;
+  onDuplicate: (imageId: string) => void;
 }) {
+
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [dragOver, setDragOver] = useState(false);
