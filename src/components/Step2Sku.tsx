@@ -10,8 +10,10 @@ interface Props {
   unmatchedIds: string[];
   skippedIds: Set<string>;
   skuText: string;
-  
+  maxOutputKiB: number;
+  onMaxOutputKiBChange: (n: number) => void;
   onReplace: (id: string, next: LoadedImage) => void;
+  onAddImage: (img: LoadedImage) => void;
   onChange: (state: {
     groups: SkuGroup[];
     unmatchedIds: string[];
@@ -27,11 +29,14 @@ export function Step2Sku({
   unmatchedIds,
   skippedIds,
   skuText,
-  
+  maxOutputKiB,
+  onMaxOutputKiBChange,
   onReplace,
+  onAddImage,
   onChange,
   onContinue,
 }: Props) {
+
   const [assignInputs, setAssignInputs] = useState<Record<string, string>>({});
   const [unmatchedOpen, setUnmatchedOpen] = useState(true);
   const [batchBg, setBatchBg] = useState<{ active: boolean; done: number; total: number; failed: number }>(
@@ -167,6 +172,47 @@ export function Step2Sku({
     });
   };
 
+  const duplicateInGroup = (han: string, imageId: string) => {
+    const src = images.find((i) => i.id === imageId);
+    if (!src) return;
+    // Build a fresh filename so dedupe-by-basename in Step 3 keeps both copies.
+    const ext = (src.filename.match(/\.[^.]+$/) ?? [""])[0];
+    const base = src.filename.slice(0, src.filename.length - ext.length);
+    const usedNames = new Set(images.map((i) => i.filename.toLowerCase()));
+    let copyNum = 1;
+    let newName = `${base}_copy${ext}`;
+    while (usedNames.has(newName.toLowerCase())) {
+      copyNum++;
+      newName = `${base}_copy${copyNum}${ext}`;
+    }
+    const newId = `${src.id}-dup-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const newFile = new File([src.file], newName, { type: src.file.type });
+    const newUrl = URL.createObjectURL(newFile);
+    const newImg: LoadedImage = {
+      ...src,
+      id: newId,
+      file: newFile,
+      filename: newName,
+      url: newUrl,
+    };
+    onAddImage(newImg);
+    onChange({
+      groups: groups.map((g) => {
+        if (g.han !== han) return g;
+        const ids = [...g.imageIds];
+        const idx = ids.indexOf(imageId);
+        if (idx === -1) ids.push(newId);
+        else ids.splice(idx + 1, 0, newId);
+        return { ...g, imageIds: ids };
+      }),
+      unmatchedIds,
+      skippedIds,
+      skuText,
+    });
+  };
+
+
+
 
   const hasMatched = groups.length > 0 || unmatchedIds.length > 0;
 
@@ -247,6 +293,46 @@ export function Step2Sku({
             </div>
           )}
         </div>
+
+        <div className="space-y-2 rounded-md border border-border bg-surface p-4">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            Max output file size
+          </h3>
+          <p className="font-mono text-[10px] text-muted-foreground">
+            Exported JPEGs will be re-compressed to stay below this size.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={20}
+              max={5000}
+              step={10}
+              value={maxOutputKiB}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!Number.isNaN(v)) onMaxOutputKiBChange(Math.max(20, Math.min(5000, v)));
+              }}
+              className="w-24 rounded border border-border bg-background px-2 py-1 font-mono text-sm outline-none focus:border-primary"
+            />
+            <span className="font-mono text-xs text-muted-foreground">KiB</span>
+            <div className="ml-auto flex gap-1">
+              {[100, 200, 500].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => onMaxOutputKiBChange(n)}
+                  className={cn(
+                    "rounded border border-border px-2 py-0.5 font-mono text-[10px] hover:bg-surface-elevated",
+                    maxOutputKiB === n && "border-primary text-primary",
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* RIGHT */}
@@ -280,8 +366,10 @@ export function Step2Sku({
                       onRemove={(id) => removeFromGroup(g.han, id)}
                       onMoveIn={(fromHan, imageId) => moveBetweenGroups(fromHan, g.han, imageId)}
                       onAssignUnmatched={(imageId) => assignToGroup(imageId, g.han)}
+                      onDuplicate={(imageId) => duplicateInGroup(g.han, imageId)}
                     />
                   ))}
+
                   {groups.length === 0 && (
                     <tr>
                       <td colSpan={4} className="px-3 py-6 text-center font-mono text-xs text-muted-foreground">
@@ -401,6 +489,7 @@ function GroupRow({
   onRemove,
   onMoveIn,
   onAssignUnmatched,
+  onDuplicate,
 }: {
   group: SkuGroup;
   byId: Map<string, LoadedImage>;
@@ -409,7 +498,9 @@ function GroupRow({
   onRemove: (id: string) => void;
   onMoveIn: (fromHan: string, imageId: string) => void;
   onAssignUnmatched: (imageId: string) => void;
+  onDuplicate: (imageId: string) => void;
 }) {
+
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -516,6 +607,20 @@ function GroupRow({
                 </span>
                 <button
                   type="button"
+                  draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDuplicate(id);
+                  }}
+                  aria-label="Duplicate image"
+                  title="Duplicate image"
+                  className="absolute left-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-background/90 font-mono text-[10px] leading-none text-foreground opacity-0 transition hover:bg-primary hover:text-primary-foreground group-hover/thumb:opacity-100"
+                >
+                  ⧉
+                </button>
+                <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemove(id);
@@ -525,6 +630,7 @@ function GroupRow({
                 >
                   ×
                 </button>
+
               </div>
             );
           })}

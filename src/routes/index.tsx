@@ -21,6 +21,8 @@ function ImageKitProApp() {
   const [unmatchedIds, setUnmatchedIds] = useState<string[]>([]);
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
   const [skuText, setSkuText] = useState("");
+  const [maxOutputKiB, setMaxOutputKiB] = useState<number>(250);
+
 
 
   const step1Done = images.length > 0;
@@ -89,6 +91,11 @@ function ImageKitProApp() {
     });
   };
 
+  const addImage = (img: LoadedImage) => {
+    setImages((prev) => [...prev, img]);
+  };
+
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-surface/30">
@@ -134,7 +141,10 @@ function ImageKitProApp() {
             unmatchedIds={unmatchedIds}
             skippedIds={skippedIds}
             skuText={skuText}
+            maxOutputKiB={maxOutputKiB}
+            onMaxOutputKiBChange={setMaxOutputKiB}
             onReplace={replaceImage}
+            onAddImage={addImage}
             onChange={(s) => {
               setGroups(s.groups);
               setUnmatchedIds(s.unmatchedIds);
@@ -145,8 +155,15 @@ function ImageKitProApp() {
           />
         )}
         {step === 3 && (
-          <Step3Process images={images} groups={groups} skippedIds={skippedIds} />
+          <Step3Process
+            images={images}
+            groups={groups}
+            skippedIds={skippedIds}
+            maxOutputKiB={maxOutputKiB}
+          />
         )}
+
+
       </main>
 
       <footer className="border-t border-border py-6">
