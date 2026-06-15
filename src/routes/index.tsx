@@ -141,7 +141,10 @@ function ImageKitProApp() {
             unmatchedIds={unmatchedIds}
             skippedIds={skippedIds}
             skuText={skuText}
+            maxOutputKiB={maxOutputKiB}
+            onMaxOutputKiBChange={setMaxOutputKiB}
             onReplace={replaceImage}
+            onAddImage={addImage}
             onChange={(s) => {
               setGroups(s.groups);
               setUnmatchedIds(s.unmatchedIds);
@@ -152,8 +155,15 @@ function ImageKitProApp() {
           />
         )}
         {step === 3 && (
-          <Step3Process images={images} groups={groups} skippedIds={skippedIds} />
+          <Step3Process
+            images={images}
+            groups={groups}
+            skippedIds={skippedIds}
+            maxOutputKiB={maxOutputKiB}
+            onReplaceImage={replaceImage}
+          />
         )}
+
       </main>
 
       <footer className="border-t border-border py-6">
