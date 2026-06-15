@@ -172,6 +172,47 @@ export function Step2Sku({
     });
   };
 
+  const duplicateInGroup = (han: string, imageId: string) => {
+    const src = images.find((i) => i.id === imageId);
+    if (!src) return;
+    // Build a fresh filename so dedupe-by-basename in Step 3 keeps both copies.
+    const ext = (src.filename.match(/\.[^.]+$/) ?? [""])[0];
+    const base = src.filename.slice(0, src.filename.length - ext.length);
+    const usedNames = new Set(images.map((i) => i.filename.toLowerCase()));
+    let copyNum = 1;
+    let newName = `${base}_copy${ext}`;
+    while (usedNames.has(newName.toLowerCase())) {
+      copyNum++;
+      newName = `${base}_copy${copyNum}${ext}`;
+    }
+    const newId = `${src.id}-dup-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const newFile = new File([src.file], newName, { type: src.file.type });
+    const newUrl = URL.createObjectURL(newFile);
+    const newImg: LoadedImage = {
+      ...src,
+      id: newId,
+      file: newFile,
+      filename: newName,
+      url: newUrl,
+    };
+    onAddImage(newImg);
+    onChange({
+      groups: groups.map((g) => {
+        if (g.han !== han) return g;
+        const ids = [...g.imageIds];
+        const idx = ids.indexOf(imageId);
+        if (idx === -1) ids.push(newId);
+        else ids.splice(idx + 1, 0, newId);
+        return { ...g, imageIds: ids };
+      }),
+      unmatchedIds,
+      skippedIds,
+      skuText,
+    });
+  };
+
+
+
 
   const hasMatched = groups.length > 0 || unmatchedIds.length > 0;
 
