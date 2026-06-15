@@ -120,21 +120,8 @@ export async function processToSquare(
   img: HTMLImageElement,
   size = 1000,
   isWhiteBg = false,
+  maxKiB = 250,
 ): Promise<Blob> {
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas unsupported");
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  // Always paint a white background first so any transparent pixels
-  // in the source (PNG/WebP with alpha) become white instead of black
-  // when encoded to JPEG.
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillRect(0, 0, size, size);
-
-
   const sw = img.naturalWidth;
   const sh = img.naturalHeight;
 
@@ -142,7 +129,6 @@ export async function processToSquare(
 
   const bounds = isWhiteBg ? findContentBounds(img) : null;
   if (bounds) {
-    // Expand bbox to a centered square, clamped to image extents.
     const maxSide = Math.min(sw, sh);
     const side = Math.min(Math.max(bounds.w, bounds.h), maxSide);
     const cx = bounds.x + bounds.w / 2;
@@ -162,6 +148,41 @@ export async function processToSquare(
     sy = Math.floor((sh - sSide) / 2);
   }
 
+  return renderCropToBlob(img, sx, sy, sSide, size, maxKiB);
+}
+
+/**
+ * Manual crop: caller supplies the source-pixel offset and side length.
+ * Used by the Step 3 crop editor where the user repositions the crop frame.
+ */
+export async function processToSquareWithOffset(
+  img: HTMLImageElement,
+  sx: number,
+  sy: number,
+  sSide: number,
+  size = 1000,
+  maxKiB = 250,
+): Promise<Blob> {
+  return renderCropToBlob(img, sx, sy, sSide, size, maxKiB);
+}
+
+async function renderCropToBlob(
+  img: HTMLImageElement,
+  sx: number,
+  sy: number,
+  sSide: number,
+  size: number,
+  maxKiB: number,
+): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas unsupported");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, size, size);
   ctx.drawImage(img, sx, sy, sSide, sSide, 0, 0, size, size);
 
   const encode = (q: number) =>
@@ -173,33 +194,16 @@ export async function processToSquare(
       );
     });
 
-  const MIN = 50 * 1024;
-  const MAX = 250 * 1024;
+  const MAX = Math.max(20, maxKiB) * 1024;
   let q = 0.92;
   let blob = await encode(q);
-
-  if (blob.size > MAX) {
-    while (blob.size > MAX && q > 0.2) {
-      q = Math.max(0.2, q - 0.05);
-      blob = await encode(q);
-    }
-  } else if (blob.size < MIN) {
-    let bestBlob = blob;
-    q = 0.95;
-    while (q <= 1.0) {
-      const next = await encode(Math.min(1, q));
-      if (next.size > bestBlob.size) bestBlob = next;
-      if (next.size >= MIN) {
-        bestBlob = next;
-        break;
-      }
-      q = +(q + 0.05).toFixed(2);
-    }
-    blob = bestBlob;
+  while (blob.size > MAX && q > 0.2) {
+    q = Math.max(0.2, q - 0.05);
+    blob = await encode(q);
   }
-
   return blob;
 }
+
 
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
