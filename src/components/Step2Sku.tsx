@@ -607,6 +607,20 @@ function GroupRow({
                 </span>
                 <button
                   type="button"
+                  draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDuplicate(id);
+                  }}
+                  aria-label="Duplicate image"
+                  title="Duplicate image"
+                  className="absolute left-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-background/90 font-mono text-[10px] leading-none text-foreground opacity-0 transition hover:bg-primary hover:text-primary-foreground group-hover/thumb:opacity-100"
+                >
+                  ⧉
+                </button>
+                <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemove(id);
@@ -616,6 +630,7 @@ function GroupRow({
                 >
                   ×
                 </button>
+
               </div>
             );
           })}
