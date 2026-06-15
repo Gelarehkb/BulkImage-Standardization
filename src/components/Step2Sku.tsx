@@ -293,6 +293,46 @@ export function Step2Sku({
             </div>
           )}
         </div>
+
+        <div className="space-y-2 rounded-md border border-border bg-surface p-4">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            Max output file size
+          </h3>
+          <p className="font-mono text-[10px] text-muted-foreground">
+            Exported JPEGs will be re-compressed to stay below this size.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={20}
+              max={5000}
+              step={10}
+              value={maxOutputKiB}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!Number.isNaN(v)) onMaxOutputKiBChange(Math.max(20, Math.min(5000, v)));
+              }}
+              className="w-24 rounded border border-border bg-background px-2 py-1 font-mono text-sm outline-none focus:border-primary"
+            />
+            <span className="font-mono text-xs text-muted-foreground">KiB</span>
+            <div className="ml-auto flex gap-1">
+              {[100, 200, 500].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => onMaxOutputKiBChange(n)}
+                  className={cn(
+                    "rounded border border-border px-2 py-0.5 font-mono text-[10px] hover:bg-surface-elevated",
+                    maxOutputKiB === n && "border-primary text-primary",
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* RIGHT */}
