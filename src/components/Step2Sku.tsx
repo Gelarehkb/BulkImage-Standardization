@@ -366,8 +366,10 @@ export function Step2Sku({
                       onRemove={(id) => removeFromGroup(g.han, id)}
                       onMoveIn={(fromHan, imageId) => moveBetweenGroups(fromHan, g.han, imageId)}
                       onAssignUnmatched={(imageId) => assignToGroup(imageId, g.han)}
+                      onDuplicate={(imageId) => duplicateInGroup(g.han, imageId)}
                     />
                   ))}
+
                   {groups.length === 0 && (
                     <tr>
                       <td colSpan={4} className="px-3 py-6 text-center font-mono text-xs text-muted-foreground">
