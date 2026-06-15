@@ -21,6 +21,8 @@ function ImageKitProApp() {
   const [unmatchedIds, setUnmatchedIds] = useState<string[]>([]);
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
   const [skuText, setSkuText] = useState("");
+  const [maxOutputKiB, setMaxOutputKiB] = useState<number>(250);
+
 
 
   const step1Done = images.length > 0;
