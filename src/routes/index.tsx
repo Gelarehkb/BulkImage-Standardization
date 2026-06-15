@@ -160,9 +160,9 @@ function ImageKitProApp() {
             groups={groups}
             skippedIds={skippedIds}
             maxOutputKiB={maxOutputKiB}
-            onReplaceImage={replaceImage}
           />
         )}
+
 
       </main>
 
