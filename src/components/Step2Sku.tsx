@@ -87,19 +87,19 @@ export function Step2Sku({
     onChange({ groups: g, unmatchedIds: unmatched, skippedIds: new Set(), skuText });
   };
 
-  const updateHan = (oldHan: string, newHan: string) => {
+  const updateHan = (idx: number, newHan: string) => {
     onChange({
-      groups: groups.map((g) => (g.han === oldHan ? { ...g, han: newHan } : g)),
+      groups: groups.map((g, i) => (i === idx ? { ...g, han: newHan } : g)),
       unmatchedIds,
       skippedIds,
       skuText,
     });
   };
 
-  const reorderInGroup = (han: string, fromIdx: number, toIdx: number) => {
+  const reorderInGroup = (idx: number, fromIdx: number, toIdx: number) => {
     onChange({
-      groups: groups.map((g) => {
-        if (g.han !== han) return g;
+      groups: groups.map((g, i) => {
+        if (i !== idx) return g;
         const ids = [...g.imageIds];
         const [moved] = ids.splice(fromIdx, 1);
         ids.splice(toIdx, 0, moved);
@@ -111,14 +111,30 @@ export function Step2Sku({
     });
   };
 
+  const assignToGroupByIndex = (imageId: string, idx: number) => {
+    onChange({
+      groups: groups.map((g, i) =>
+        i === idx ? { ...g, imageIds: [...g.imageIds, imageId] } : g,
+      ),
+      unmatchedIds: unmatchedIds.filter((id) => id !== imageId),
+      skippedIds,
+      skuText,
+    });
+    setAssignInputs((p) => {
+      const n = { ...p };
+      delete n[imageId];
+      return n;
+    });
+  };
+
   const assignToGroup = (imageId: string, han: string) => {
     const target = han.trim();
     if (!target) return;
+    const existingIdx = groups.findIndex((g) => g.han === target);
     let nextGroups = [...groups];
-    const existing = nextGroups.find((g) => g.han === target);
-    if (existing) {
-      nextGroups = nextGroups.map((g) =>
-        g.han === target ? { ...g, imageIds: [...g.imageIds, imageId] } : g,
+    if (existingIdx !== -1) {
+      nextGroups = nextGroups.map((g, i) =>
+        i === existingIdx ? { ...g, imageIds: [...g.imageIds, imageId] } : g,
       );
     } else {
       nextGroups.push({ han: target, imageIds: [imageId] });
@@ -143,10 +159,10 @@ export function Step2Sku({
     onChange({ groups, unmatchedIds, skippedIds: next, skuText });
   };
 
-  const removeFromGroup = (han: string, imageId: string) => {
+  const removeFromGroup = (idx: number, imageId: string) => {
     onChange({
-      groups: groups.map((g) =>
-        g.han === han ? { ...g, imageIds: g.imageIds.filter((i) => i !== imageId) } : g,
+      groups: groups.map((g, i) =>
+        i === idx ? { ...g, imageIds: g.imageIds.filter((x) => x !== imageId) } : g,
       ),
       unmatchedIds: unmatchedIds.includes(imageId) ? unmatchedIds : [...unmatchedIds, imageId],
       skippedIds,
@@ -154,12 +170,12 @@ export function Step2Sku({
     });
   };
 
-  const moveBetweenGroups = (fromHan: string, toHan: string, imageId: string) => {
-    if (fromHan === toHan) return;
+  const moveBetweenGroups = (fromIdx: number, toIdx: number, imageId: string) => {
+    if (fromIdx === toIdx) return;
     onChange({
-      groups: groups.map((g) => {
-        if (g.han === fromHan) return { ...g, imageIds: g.imageIds.filter((i) => i !== imageId) };
-        if (g.han === toHan)
+      groups: groups.map((g, i) => {
+        if (i === fromIdx) return { ...g, imageIds: g.imageIds.filter((x) => x !== imageId) };
+        if (i === toIdx)
           return {
             ...g,
             imageIds: g.imageIds.includes(imageId) ? g.imageIds : [...g.imageIds, imageId],
@@ -172,7 +188,7 @@ export function Step2Sku({
     });
   };
 
-  const duplicateInGroup = (han: string, imageId: string) => {
+  const duplicateInGroup = (idx: number, imageId: string) => {
     const src = images.find((i) => i.id === imageId);
     if (!src) return;
     // Build a fresh filename so dedupe-by-basename in Step 3 keeps both copies.
@@ -197,12 +213,12 @@ export function Step2Sku({
     };
     onAddImage(newImg);
     onChange({
-      groups: groups.map((g) => {
-        if (g.han !== han) return g;
+      groups: groups.map((g, i) => {
+        if (i !== idx) return g;
         const ids = [...g.imageIds];
-        const idx = ids.indexOf(imageId);
-        if (idx === -1) ids.push(newId);
-        else ids.splice(idx + 1, 0, newId);
+        const j = ids.indexOf(imageId);
+        if (j === -1) ids.push(newId);
+        else ids.splice(j + 1, 0, newId);
         return { ...g, imageIds: ids };
       }),
       unmatchedIds,
@@ -210,6 +226,7 @@ export function Step2Sku({
       skuText,
     });
   };
+
 
 
 
