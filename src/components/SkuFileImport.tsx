@@ -57,9 +57,10 @@ export function SkuFileImport({ onPick }: Props) {
   const useColumn = (idx: number) => {
     setSelectedCol(idx);
     if (!parsed) return;
-    const skus = Array.from(
-      new Set(parsed.allRows.map((r) => r[idx]).filter((v) => v.trim().length > 0)),
-    );
+    const skus = parsed.allRows
+      .map((r) => r[idx])
+      .filter((v) => v.trim().length > 0);
+
     onPick(skus);
   };
 
