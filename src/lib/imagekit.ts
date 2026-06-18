@@ -254,14 +254,14 @@ export function matchSkus(
   skus: string[],
   images: LoadedImage[],
 ): { groups: SkuGroup[]; unmatched: string[] } {
-  const cleanSkus = Array.from(
-    new Set(skus.map((s) => s.trim()).filter((s) => s.length > 0)),
-  );
-  // Sort longest-first for deterministic longest-match-wins on overlap
-  const ordered = [...cleanSkus].sort((a, b) => b.length - a.length);
+  const cleanSkus = skus.map((s) => s.trim()).filter((s) => s.length > 0);
+  // Sort unique SKUs longest-first for deterministic longest-match-wins on overlap
+  const uniqueSkus = Array.from(new Set(cleanSkus));
+  const ordered = [...uniqueSkus].sort((a, b) => b.length - a.length);
 
+  // Track image assignments per unique SKU; duplicate HAN entries share the same image list.
   const groupMap = new Map<string, string[]>();
-  for (const sku of cleanSkus) groupMap.set(sku, []);
+  for (const sku of uniqueSkus) groupMap.set(sku, []);
   const unmatched: string[] = [];
 
   for (const img of images) {
@@ -282,8 +282,12 @@ export function matchSkus(
 
   // Auto-order: white-bg first, then model, alphabetical within each
   const byId = new Map(images.map((i) => [i.id, i]));
+  const seenHan = new Set<string>();
   const groups: SkuGroup[] = cleanSkus.map((han) => {
-    const ids = groupMap.get(han)!;
+    // Only the first occurrence of a HAN gets the matched images; later duplicates are empty.
+    const isFirst = !seenHan.has(han);
+    seenHan.add(han);
+    const ids = isFirst ? [...(groupMap.get(han) ?? [])] : [];
     ids.sort((a, b) => {
       const ia = byId.get(a)!;
       const ib = byId.get(b)!;
@@ -292,6 +296,7 @@ export function matchSkus(
     });
     return { han, imageIds: ids };
   });
+
 
   return { groups, unmatched };
 }
