@@ -373,19 +373,23 @@ export function Step2Sku({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {groups.map((g) => (
+                  {groups.map((g, idx) => (
                     <GroupRow
-                      key={g.han}
+                      key={`${g.han}__${idx}`}
                       group={g}
                       byId={byId}
-                      onUpdateHan={(v) => updateHan(g.han, v)}
-                      onReorder={(from, to) => reorderInGroup(g.han, from, to)}
-                      onRemove={(id) => removeFromGroup(g.han, id)}
-                      onMoveIn={(fromHan, imageId) => moveBetweenGroups(fromHan, g.han, imageId)}
-                      onAssignUnmatched={(imageId) => assignToGroup(imageId, g.han)}
-                      onDuplicate={(imageId) => duplicateInGroup(g.han, imageId)}
+                      onUpdateHan={(v) => updateHan(idx, v)}
+                      onReorder={(from, to) => reorderInGroup(idx, from, to)}
+                      onRemove={(id) => removeFromGroup(idx, id)}
+                      onMoveIn={(fromHan, imageId) => {
+                        const fromIdx = groups.findIndex((x) => x.han === fromHan && x.imageIds.includes(imageId));
+                        if (fromIdx !== -1) moveBetweenGroups(fromIdx, idx, imageId);
+                      }}
+                      onAssignUnmatched={(imageId) => assignToGroupByIndex(imageId, idx)}
+                      onDuplicate={(imageId) => duplicateInGroup(idx, imageId)}
                     />
                   ))}
+
 
                   {groups.length === 0 && (
                     <tr>
