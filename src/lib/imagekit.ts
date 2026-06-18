@@ -282,12 +282,10 @@ export function matchSkus(
 
   // Auto-order: white-bg first, then model, alphabetical within each
   const byId = new Map(images.map((i) => [i.id, i]));
-  const seenHan = new Set<string>();
   const groups: SkuGroup[] = cleanSkus.map((han) => {
-    // Only the first occurrence of a HAN gets the matched images; later duplicates are empty.
-    const isFirst = !seenHan.has(han);
-    seenHan.add(han);
-    const ids = isFirst ? [...(groupMap.get(han) ?? [])] : [];
+    // Every occurrence of a HAN (including duplicates) receives the same matched images,
+    // so duplicated SKU rows share images across size/variant exports.
+    const ids = [...(groupMap.get(han) ?? [])];
     ids.sort((a, b) => {
       const ia = byId.get(a)!;
       const ib = byId.get(b)!;
