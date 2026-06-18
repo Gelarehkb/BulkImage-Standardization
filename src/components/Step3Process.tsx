@@ -157,10 +157,15 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
       if (!groupedFiles.has(p.han)) groupedFiles.set(p.han, []);
       groupedFiles.get(p.han)!.push(csvFilename(p.filename));
     }
-    for (const g of validGroups) {
+    // Include EVERY pasted HAN in original order, even if it has no images assigned.
+    const seenHan = new Set<string>();
+    for (const g of groups) {
       const han = g.han.trim();
-      const files = groupedFiles.get(han) ?? [];
-      if (files.length === 0) continue;
+      if (!han) continue;
+      const isFirst = !seenHan.has(han);
+      seenHan.add(han);
+      // Only the first occurrence of a duplicated HAN gets file cells; later duplicates stay empty.
+      const files = isFirst ? (groupedFiles.get(han) ?? []) : [];
       const cells = Array.from({ length: maxImages }, (_, i) => files[i] ?? "");
       lines.push([han, ...cells].join(";"));
     }
@@ -168,6 +173,7 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     downloadBlob(blob, "jtl_import.csv");
   };
+
 
   const grouped: Record<string, ProcessedItem[]> = {};
   for (const p of processed) {
