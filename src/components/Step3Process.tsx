@@ -49,7 +49,16 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
     setProcessing(true);
     setDone(false);
     const all: ProcessedItem[] = [];
-    const total = validGroups.reduce((acc, g) => {
+    // Dedupe by HAN: duplicate SKU rows share the same processed images, so only process once.
+    const uniqueGroups: SkuGroup[] = [];
+    const seenHanRun = new Set<string>();
+    for (const g of validGroups) {
+      const han = g.han.trim();
+      if (seenHanRun.has(han)) continue;
+      seenHanRun.add(han);
+      uniqueGroups.push(g);
+    }
+    const total = uniqueGroups.reduce((acc, g) => {
       const bases = new Set<string>();
       for (const id of g.imageIds) {
         if (skippedIds.has(id)) continue;
@@ -62,7 +71,7 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
     setProgress({ done: 0, total, label: "" });
 
     let i = 0;
-    for (const g of validGroups) {
+    for (const g of uniqueGroups) {
       const han = g.han.trim();
       const byBase = new Map<string, string>();
       for (const id of g.imageIds) {
@@ -157,15 +166,12 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
       if (!groupedFiles.has(p.han)) groupedFiles.set(p.han, []);
       groupedFiles.get(p.han)!.push(csvFilename(p.filename));
     }
-    // Include EVERY pasted HAN in original order, even if it has no images assigned.
-    const seenHan = new Set<string>();
+    // Every pasted HAN occurrence (including duplicates) gets the same file cells,
+    // so size/variant rows share the matched images.
     for (const g of groups) {
       const han = g.han.trim();
       if (!han) continue;
-      const isFirst = !seenHan.has(han);
-      seenHan.add(han);
-      // Only the first occurrence of a duplicated HAN gets file cells; later duplicates stay empty.
-      const files = isFirst ? (groupedFiles.get(han) ?? []) : [];
+      const files = groupedFiles.get(han) ?? [];
       const cells = Array.from({ length: maxImages }, (_, i) => files[i] ?? "");
       lines.push([han, ...cells].join(";"));
     }
