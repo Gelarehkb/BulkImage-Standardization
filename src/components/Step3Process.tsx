@@ -166,15 +166,12 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
       if (!groupedFiles.has(p.han)) groupedFiles.set(p.han, []);
       groupedFiles.get(p.han)!.push(csvFilename(p.filename));
     }
-    // Include EVERY pasted HAN in original order, even if it has no images assigned.
-    const seenHan = new Set<string>();
+    // Every pasted HAN occurrence (including duplicates) gets the same file cells,
+    // so size/variant rows share the matched images.
     for (const g of groups) {
       const han = g.han.trim();
       if (!han) continue;
-      const isFirst = !seenHan.has(han);
-      seenHan.add(han);
-      // Only the first occurrence of a duplicated HAN gets file cells; later duplicates stay empty.
-      const files = isFirst ? (groupedFiles.get(han) ?? []) : [];
+      const files = groupedFiles.get(han) ?? [];
       const cells = Array.from({ length: maxImages }, (_, i) => files[i] ?? "");
       lines.push([han, ...cells].join(";"));
     }
