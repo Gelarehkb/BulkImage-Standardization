@@ -571,6 +571,15 @@ export function Step2Sku({
 }
 
 function GroupRow({
+  idx,
+  isFirst,
+  isLast,
+  isFillSource,
+  isFillTarget,
+  onFillStart,
+  onRowEnter,
+  onMoveUp,
+  onMoveDown,
   group,
   byId,
   onUpdateHan,
@@ -580,6 +589,15 @@ function GroupRow({
   onAssignUnmatched,
   onDuplicate,
 }: {
+  idx: number;
+  isFirst: boolean;
+  isLast: boolean;
+  isFillSource: boolean;
+  isFillTarget: boolean;
+  onFillStart: () => void;
+  onRowEnter: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   group: SkuGroup;
   byId: Map<string, LoadedImage>;
   onUpdateHan: (v: string) => void;
@@ -613,7 +631,40 @@ function GroupRow({
   };
 
   return (
-    <tr className="hover:bg-surface-elevated/50">
+    <tr
+      onMouseEnter={onRowEnter}
+      className={cn(
+        "relative hover:bg-surface-elevated/50",
+        isFillSource && "bg-primary/5 ring-1 ring-inset ring-primary/40",
+        isFillTarget && "bg-primary/10",
+      )}
+    >
+      <td className="px-2 py-2 align-middle">
+        <div className="flex flex-col items-center gap-0.5">
+          <button
+            type="button"
+            onClick={onMoveUp}
+            disabled={isFirst}
+            aria-label="Move row up"
+            title="Move row up"
+            className="flex h-4 w-5 items-center justify-center rounded border border-border bg-surface font-mono text-[10px] leading-none hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            ▲
+          </button>
+          <span className="font-mono text-[10px] text-muted-foreground">{idx + 1}</span>
+          <button
+            type="button"
+            onClick={onMoveDown}
+            disabled={isLast}
+            aria-label="Move row down"
+            title="Move row down"
+            className="flex h-4 w-5 items-center justify-center rounded border border-border bg-surface font-mono text-[10px] leading-none hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            ▼
+          </button>
+        </div>
+      </td>
+
       <td className="px-3 py-2 align-middle">
         <input
           value={group.han}
