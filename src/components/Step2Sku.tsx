@@ -791,16 +791,35 @@ function GroupRow({
           )}
         </div>
       </td>
-      <td className="px-3 py-2 align-middle">
-        {ready ? (
-          <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[10px] text-success">
-            ✅ Ready
-          </span>
-        ) : (
-          <span className="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 font-mono text-[10px] text-warning">
-            ⚠️ Empty
-          </span>
-        )}
+      <td className="relative px-3 py-2 align-middle">
+        <div className="flex items-center gap-2">
+          {ready ? (
+            <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[10px] text-success">
+              ✅ Ready
+            </span>
+          ) : (
+            <span className="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 font-mono text-[10px] text-warning">
+              ⚠️ Empty
+            </span>
+          )}
+          {/* Excel-style fill handle: press-and-drag over rows below/above
+              to copy this row's images into them. */}
+          <button
+            type="button"
+            aria-label="Fill images down"
+            title="Drag down to copy these images into other rows"
+            disabled={!ready}
+            onMouseDown={(e) => {
+              if (!ready) return;
+              e.preventDefault();
+              onFillStart();
+            }}
+            className={cn(
+              "ml-auto h-3 w-3 shrink-0 cursor-crosshair rounded-sm border border-background bg-primary shadow-sm hover:scale-125 disabled:cursor-not-allowed disabled:opacity-30",
+              isFillSource && "ring-2 ring-primary/60",
+            )}
+          />
+        </div>
       </td>
     </tr>
   );
