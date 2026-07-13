@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { LoadedImage, SkuGroup } from "@/lib/imagekit";
 import { detectWhiteBg, loadImageElement, matchSkus, removeBackground } from "@/lib/imagekit";
 import { SkuFileImport } from "@/components/SkuFileImport";
@@ -42,6 +42,11 @@ export function Step2Sku({
   const [batchBg, setBatchBg] = useState<{ active: boolean; done: number; total: number; failed: number }>(
     { active: false, done: 0, total: 0, failed: 0 },
   );
+  // Excel-like fill-down state. When the user mouse-downs a row's fill handle,
+  // fillSource is the row index; hovering rows updates fillTarget so we can
+  // highlight the range and commit on mouseup.
+  const [fillSource, setFillSource] = useState<number | null>(null);
+  const [fillTarget, setFillTarget] = useState<number | null>(null);
 
   const runBatchRemoveBg = async () => {
     const targets = images.filter((i) => i.bg !== "white");
@@ -229,7 +234,47 @@ export function Step2Sku({
 
 
 
+  // Move a row up or down while keeping the group's imageIds intact —
+  // reordering the array preserves each row's own images.
+  const moveGroup = (fromIdx: number, dir: -1 | 1) => {
+    const toIdx = fromIdx + dir;
+    if (toIdx < 0 || toIdx >= groups.length) return;
+    const next = [...groups];
+    [next[fromIdx], next[toIdx]] = [next[toIdx], next[fromIdx]];
+    onChange({ groups: next, unmatchedIds, skippedIds, skuText });
+  };
 
+  // Excel-style fill-down: copy the source row's imageIds into every row in
+  // [min(source,target) .. max(source,target)] except the source itself.
+  const commitFill = (sourceIdx: number, targetIdx: number) => {
+    if (sourceIdx === targetIdx) return;
+    const src = groups[sourceIdx];
+    if (!src) return;
+    const lo = Math.min(sourceIdx, targetIdx);
+    const hi = Math.max(sourceIdx, targetIdx);
+    onChange({
+      groups: groups.map((g, i) => {
+        if (i < lo || i > hi || i === sourceIdx) return g;
+        return { ...g, imageIds: [...src.imageIds] };
+      }),
+      unmatchedIds,
+      skippedIds,
+      skuText,
+    });
+  };
+
+  // Global mouseup ends any in-progress fill and commits the range.
+  useEffect(() => {
+    if (fillSource === null) return;
+    const onUp = () => {
+      if (fillSource !== null && fillTarget !== null) commitFill(fillSource, fillTarget);
+      setFillSource(null);
+      setFillTarget(null);
+    };
+    window.addEventListener("mouseup", onUp);
+    return () => window.removeEventListener("mouseup", onUp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fillSource, fillTarget]);
 
   const hasMatched = groups.length > 0 || unmatchedIds.length > 0;
 
@@ -366,6 +411,7 @@ export function Step2Sku({
               <table className="w-full">
                 <thead className="bg-surface-elevated">
                   <tr className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <th className="w-14 px-2 py-2 text-left">Row</th>
                     <th className="w-44 px-3 py-2 text-left">HAN</th>
                     <th className="w-16 px-3 py-2 text-left">Imgs</th>
                     <th className="px-3 py-2 text-left">Preview · drag to reorder</th>
@@ -373,27 +419,49 @@ export function Step2Sku({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {groups.map((g, idx) => (
-                    <GroupRow
-                      key={`${g.han}__${idx}`}
-                      group={g}
-                      byId={byId}
-                      onUpdateHan={(v) => updateHan(idx, v)}
-                      onReorder={(from, to) => reorderInGroup(idx, from, to)}
-                      onRemove={(id) => removeFromGroup(idx, id)}
-                      onMoveIn={(fromHan, imageId) => {
-                        const fromIdx = groups.findIndex((x) => x.han === fromHan && x.imageIds.includes(imageId));
-                        if (fromIdx !== -1) moveBetweenGroups(fromIdx, idx, imageId);
-                      }}
-                      onAssignUnmatched={(imageId) => assignToGroupByIndex(imageId, idx)}
-                      onDuplicate={(imageId) => duplicateInGroup(idx, imageId)}
-                    />
-                  ))}
+                  {groups.map((g, idx) => {
+                    const inFillRange =
+                      fillSource !== null &&
+                      fillTarget !== null &&
+                      idx !== fillSource &&
+                      idx >= Math.min(fillSource, fillTarget) &&
+                      idx <= Math.max(fillSource, fillTarget);
+                    return (
+                      <GroupRow
+                        key={`${g.han}__${idx}`}
+                        idx={idx}
+                        isFirst={idx === 0}
+                        isLast={idx === groups.length - 1}
+                        isFillSource={fillSource === idx}
+                        isFillTarget={inFillRange}
+                        onFillStart={() => {
+                          setFillSource(idx);
+                          setFillTarget(idx);
+                        }}
+                        onRowEnter={() => {
+                          if (fillSource !== null) setFillTarget(idx);
+                        }}
+                        onMoveUp={() => moveGroup(idx, -1)}
+                        onMoveDown={() => moveGroup(idx, 1)}
+                        group={g}
+                        byId={byId}
+                        onUpdateHan={(v) => updateHan(idx, v)}
+                        onReorder={(from, to) => reorderInGroup(idx, from, to)}
+                        onRemove={(id) => removeFromGroup(idx, id)}
+                        onMoveIn={(fromHan, imageId) => {
+                          const fromIdx = groups.findIndex((x) => x.han === fromHan && x.imageIds.includes(imageId));
+                          if (fromIdx !== -1) moveBetweenGroups(fromIdx, idx, imageId);
+                        }}
+                        onAssignUnmatched={(imageId) => assignToGroupByIndex(imageId, idx)}
+                        onDuplicate={(imageId) => duplicateInGroup(idx, imageId)}
+                      />
+                    );
+                  })}
 
 
                   {groups.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-3 py-6 text-center font-mono text-xs text-muted-foreground">
+                      <td colSpan={5} className="px-3 py-6 text-center font-mono text-xs text-muted-foreground">
                         No SKU groups yet
                       </td>
                     </tr>
@@ -503,6 +571,15 @@ export function Step2Sku({
 }
 
 function GroupRow({
+  idx,
+  isFirst,
+  isLast,
+  isFillSource,
+  isFillTarget,
+  onFillStart,
+  onRowEnter,
+  onMoveUp,
+  onMoveDown,
   group,
   byId,
   onUpdateHan,
@@ -512,6 +589,15 @@ function GroupRow({
   onAssignUnmatched,
   onDuplicate,
 }: {
+  idx: number;
+  isFirst: boolean;
+  isLast: boolean;
+  isFillSource: boolean;
+  isFillTarget: boolean;
+  onFillStart: () => void;
+  onRowEnter: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   group: SkuGroup;
   byId: Map<string, LoadedImage>;
   onUpdateHan: (v: string) => void;
@@ -545,7 +631,40 @@ function GroupRow({
   };
 
   return (
-    <tr className="hover:bg-surface-elevated/50">
+    <tr
+      onMouseEnter={onRowEnter}
+      className={cn(
+        "relative hover:bg-surface-elevated/50",
+        isFillSource && "bg-primary/5 ring-1 ring-inset ring-primary/40",
+        isFillTarget && "bg-primary/10",
+      )}
+    >
+      <td className="px-2 py-2 align-middle">
+        <div className="flex flex-col items-center gap-0.5">
+          <button
+            type="button"
+            onClick={onMoveUp}
+            disabled={isFirst}
+            aria-label="Move row up"
+            title="Move row up"
+            className="flex h-4 w-5 items-center justify-center rounded border border-border bg-surface font-mono text-[10px] leading-none hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            ▲
+          </button>
+          <span className="font-mono text-[10px] text-muted-foreground">{idx + 1}</span>
+          <button
+            type="button"
+            onClick={onMoveDown}
+            disabled={isLast}
+            aria-label="Move row down"
+            title="Move row down"
+            className="flex h-4 w-5 items-center justify-center rounded border border-border bg-surface font-mono text-[10px] leading-none hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            ▼
+          </button>
+        </div>
+      </td>
+
       <td className="px-3 py-2 align-middle">
         <input
           value={group.han}
@@ -672,16 +791,35 @@ function GroupRow({
           )}
         </div>
       </td>
-      <td className="px-3 py-2 align-middle">
-        {ready ? (
-          <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[10px] text-success">
-            ✅ Ready
-          </span>
-        ) : (
-          <span className="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 font-mono text-[10px] text-warning">
-            ⚠️ Empty
-          </span>
-        )}
+      <td className="relative px-3 py-2 align-middle">
+        <div className="flex items-center gap-2">
+          {ready ? (
+            <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[10px] text-success">
+              ✅ Ready
+            </span>
+          ) : (
+            <span className="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 font-mono text-[10px] text-warning">
+              ⚠️ Empty
+            </span>
+          )}
+          {/* Excel-style fill handle: press-and-drag over rows below/above
+              to copy this row's images into them. */}
+          <button
+            type="button"
+            aria-label="Fill images down"
+            title="Drag down to copy these images into other rows"
+            disabled={!ready}
+            onMouseDown={(e) => {
+              if (!ready) return;
+              e.preventDefault();
+              onFillStart();
+            }}
+            className={cn(
+              "ml-auto h-3 w-3 shrink-0 cursor-crosshair rounded-sm border border-background bg-primary shadow-sm hover:scale-125 disabled:cursor-not-allowed disabled:opacity-30",
+              isFillSource && "ring-2 ring-primary/60",
+            )}
+          />
+        </div>
       </td>
     </tr>
   );
