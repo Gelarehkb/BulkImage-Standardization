@@ -42,6 +42,11 @@ export function Step2Sku({
   const [batchBg, setBatchBg] = useState<{ active: boolean; done: number; total: number; failed: number }>(
     { active: false, done: 0, total: 0, failed: 0 },
   );
+  // Excel-like fill-down state. When the user mouse-downs a row's fill handle,
+  // fillSource is the row index; hovering rows updates fillTarget so we can
+  // highlight the range and commit on mouseup.
+  const [fillSource, setFillSource] = useState<number | null>(null);
+  const [fillTarget, setFillTarget] = useState<number | null>(null);
 
   const runBatchRemoveBg = async () => {
     const targets = images.filter((i) => i.bg !== "white");
