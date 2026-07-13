@@ -249,17 +249,42 @@ export async function removeBackground(file: File | Blob): Promise<Blob> {
   }
 }
 
-/** Match SKUs to images. Each image → at most one SKU (longest match wins). */
+/**
+ * Extract alphanumeric tokens from a SKU string for fallback token matching.
+ * A token must be at least 4 chars AND contain at least one digit — this
+ * avoids matching generic words like "dot", "avena", "pack" while still
+ * catching identifier-like tokens ("ks105981", "p30134").
+ */
+function extractSkuTokens(sku: string): string[] {
+  const raw = sku.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  return raw.filter((t) => t.length >= 4 && /\d/.test(t));
+}
+
+/**
+ * Match SKUs to images.
+ * Rule 1 (primary): filename contains the full SKU as a substring.
+ * Rule 2 (fallback): filename contains any alphanumeric token extracted from
+ *   the SKU (length ≥ 4, must contain a digit). Longest matching needle wins,
+ *   across both rules and across all SKUs.
+ */
 export function matchSkus(
   skus: string[],
   images: LoadedImage[],
 ): { groups: SkuGroup[]; unmatched: string[] } {
   const cleanSkus = skus.map((s) => s.trim()).filter((s) => s.length > 0);
-  // Sort unique SKUs longest-first for deterministic longest-match-wins on overlap
   const uniqueSkus = Array.from(new Set(cleanSkus));
-  const ordered = [...uniqueSkus].sort((a, b) => b.length - a.length);
 
-  // Track image assignments per unique SKU; duplicate HAN entries share the same image list.
+  // Build [needle, ownerSku] pairs from full SKUs + token fallbacks.
+  const needles: Array<{ needle: string; sku: string }> = [];
+  for (const sku of uniqueSkus) {
+    needles.push({ needle: sku.toLowerCase(), sku });
+    for (const tok of extractSkuTokens(sku)) {
+      needles.push({ needle: tok, sku });
+    }
+  }
+  // Longest needle first → longest-match-wins across SKUs and rules.
+  needles.sort((a, b) => b.needle.length - a.needle.length);
+
   const groupMap = new Map<string, string[]>();
   for (const sku of uniqueSkus) groupMap.set(sku, []);
   const unmatched: string[] = [];
@@ -267,8 +292,8 @@ export function matchSkus(
   for (const img of images) {
     const lowerName = img.filename.toLowerCase();
     let bestSku: string | null = null;
-    for (const sku of ordered) {
-      if (lowerName.includes(sku.toLowerCase())) {
+    for (const { needle, sku } of needles) {
+      if (needle && lowerName.includes(needle)) {
         bestSku = sku;
         break;
       }
@@ -280,11 +305,8 @@ export function matchSkus(
     }
   }
 
-  // Auto-order: white-bg first, then model, alphabetical within each
   const byId = new Map(images.map((i) => [i.id, i]));
   const groups: SkuGroup[] = cleanSkus.map((han) => {
-    // Every occurrence of a HAN (including duplicates) receives the same matched images,
-    // so duplicated SKU rows share images across size/variant exports.
     const ids = [...(groupMap.get(han) ?? [])];
     ids.sort((a, b) => {
       const ia = byId.get(a)!;
@@ -294,7 +316,6 @@ export function matchSkus(
     });
     return { han, imageIds: ids };
   });
-
 
   return { groups, unmatched };
 }
