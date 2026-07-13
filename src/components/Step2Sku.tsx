@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { LoadedImage, SkuGroup } from "@/lib/imagekit";
 import { detectWhiteBg, loadImageElement, matchSkus, removeBackground } from "@/lib/imagekit";
 import { SkuFileImport } from "@/components/SkuFileImport";
