@@ -234,7 +234,47 @@ export function Step2Sku({
 
 
 
+  // Move a row up or down while keeping the group's imageIds intact —
+  // reordering the array preserves each row's own images.
+  const moveGroup = (fromIdx: number, dir: -1 | 1) => {
+    const toIdx = fromIdx + dir;
+    if (toIdx < 0 || toIdx >= groups.length) return;
+    const next = [...groups];
+    [next[fromIdx], next[toIdx]] = [next[toIdx], next[fromIdx]];
+    onChange({ groups: next, unmatchedIds, skippedIds, skuText });
+  };
 
+  // Excel-style fill-down: copy the source row's imageIds into every row in
+  // [min(source,target) .. max(source,target)] except the source itself.
+  const commitFill = (sourceIdx: number, targetIdx: number) => {
+    if (sourceIdx === targetIdx) return;
+    const src = groups[sourceIdx];
+    if (!src) return;
+    const lo = Math.min(sourceIdx, targetIdx);
+    const hi = Math.max(sourceIdx, targetIdx);
+    onChange({
+      groups: groups.map((g, i) => {
+        if (i < lo || i > hi || i === sourceIdx) return g;
+        return { ...g, imageIds: [...src.imageIds] };
+      }),
+      unmatchedIds,
+      skippedIds,
+      skuText,
+    });
+  };
+
+  // Global mouseup ends any in-progress fill and commits the range.
+  useEffect(() => {
+    if (fillSource === null) return;
+    const onUp = () => {
+      if (fillSource !== null && fillTarget !== null) commitFill(fillSource, fillTarget);
+      setFillSource(null);
+      setFillTarget(null);
+    };
+    window.addEventListener("mouseup", onUp);
+    return () => window.removeEventListener("mouseup", onUp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fillSource, fillTarget]);
 
   const hasMatched = groups.length > 0 || unmatchedIds.length > 0;
 
