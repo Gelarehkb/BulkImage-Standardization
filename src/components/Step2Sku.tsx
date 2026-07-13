@@ -411,6 +411,7 @@ export function Step2Sku({
               <table className="w-full">
                 <thead className="bg-surface-elevated">
                   <tr className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <th className="w-14 px-2 py-2 text-left">Row</th>
                     <th className="w-44 px-3 py-2 text-left">HAN</th>
                     <th className="w-16 px-3 py-2 text-left">Imgs</th>
                     <th className="px-3 py-2 text-left">Preview · drag to reorder</th>
@@ -418,27 +419,49 @@ export function Step2Sku({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {groups.map((g, idx) => (
-                    <GroupRow
-                      key={`${g.han}__${idx}`}
-                      group={g}
-                      byId={byId}
-                      onUpdateHan={(v) => updateHan(idx, v)}
-                      onReorder={(from, to) => reorderInGroup(idx, from, to)}
-                      onRemove={(id) => removeFromGroup(idx, id)}
-                      onMoveIn={(fromHan, imageId) => {
-                        const fromIdx = groups.findIndex((x) => x.han === fromHan && x.imageIds.includes(imageId));
-                        if (fromIdx !== -1) moveBetweenGroups(fromIdx, idx, imageId);
-                      }}
-                      onAssignUnmatched={(imageId) => assignToGroupByIndex(imageId, idx)}
-                      onDuplicate={(imageId) => duplicateInGroup(idx, imageId)}
-                    />
-                  ))}
+                  {groups.map((g, idx) => {
+                    const inFillRange =
+                      fillSource !== null &&
+                      fillTarget !== null &&
+                      idx !== fillSource &&
+                      idx >= Math.min(fillSource, fillTarget) &&
+                      idx <= Math.max(fillSource, fillTarget);
+                    return (
+                      <GroupRow
+                        key={`${g.han}__${idx}`}
+                        idx={idx}
+                        isFirst={idx === 0}
+                        isLast={idx === groups.length - 1}
+                        isFillSource={fillSource === idx}
+                        isFillTarget={inFillRange}
+                        onFillStart={() => {
+                          setFillSource(idx);
+                          setFillTarget(idx);
+                        }}
+                        onRowEnter={() => {
+                          if (fillSource !== null) setFillTarget(idx);
+                        }}
+                        onMoveUp={() => moveGroup(idx, -1)}
+                        onMoveDown={() => moveGroup(idx, 1)}
+                        group={g}
+                        byId={byId}
+                        onUpdateHan={(v) => updateHan(idx, v)}
+                        onReorder={(from, to) => reorderInGroup(idx, from, to)}
+                        onRemove={(id) => removeFromGroup(idx, id)}
+                        onMoveIn={(fromHan, imageId) => {
+                          const fromIdx = groups.findIndex((x) => x.han === fromHan && x.imageIds.includes(imageId));
+                          if (fromIdx !== -1) moveBetweenGroups(fromIdx, idx, imageId);
+                        }}
+                        onAssignUnmatched={(imageId) => assignToGroupByIndex(imageId, idx)}
+                        onDuplicate={(imageId) => duplicateInGroup(idx, imageId)}
+                      />
+                    );
+                  })}
 
 
                   {groups.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-3 py-6 text-center font-mono text-xs text-muted-foreground">
+                      <td colSpan={5} className="px-3 py-6 text-center font-mono text-xs text-muted-foreground">
                         No SKU groups yet
                       </td>
                     </tr>
