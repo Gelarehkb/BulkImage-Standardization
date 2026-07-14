@@ -58,41 +58,29 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
       seenHanRun.add(han);
       uniqueGroups.push(g);
     }
-    const total = uniqueGroups.reduce((acc, g) => {
-      const bases = new Set<string>();
+    // Dedupe within a group by image id only (fill-down may repeat the same id).
+    // Never collapse different images that happen to share a filename base — that
+    // was hiding legit assignments from the ZIP.
+    const uniqueIdsByGroup = uniqueGroups.map((g) => {
+      const seen = new Set<string>();
+      const out: string[] = [];
       for (const id of g.imageIds) {
         if (skippedIds.has(id)) continue;
-        const src = byId.current.get(id);
-        if (!src) continue;
-        bases.add(src.filename.replace(/\.[^.]+$/, "").toLowerCase());
+        if (seen.has(id)) continue;
+        if (!byId.current.has(id)) continue;
+        seen.add(id);
+        out.push(id);
       }
-      return acc + bases.size;
-    }, 0);
+      return out;
+    });
+    const total = uniqueIdsByGroup.reduce((acc, ids) => acc + ids.length, 0);
     setProgress({ done: 0, total, label: "" });
 
     let i = 0;
-    for (const g of uniqueGroups) {
+    for (let gi = 0; gi < uniqueGroups.length; gi++) {
+      const g = uniqueGroups[gi];
       const han = g.han.trim();
-      const byBase = new Map<string, string>();
-      for (const id of g.imageIds) {
-        if (skippedIds.has(id)) continue;
-        const src = byId.current.get(id);
-        if (!src) continue;
-        const base = src.filename.replace(/\.[^.]+$/, "").toLowerCase();
-        const existingId = byBase.get(base);
-        if (!existingId) {
-          byBase.set(base, id);
-          continue;
-        }
-        const existing = byId.current.get(existingId)!;
-        const existingIsJpg = /\.jpe?g$/i.test(existing.filename);
-        const currentIsJpg = /\.jpe?g$/i.test(src.filename);
-        if (!existingIsJpg && currentIsJpg) byBase.set(base, id);
-        else if (existingIsJpg && !currentIsJpg) {
-          /* keep existing */
-        } else byBase.set(base, id);
-      }
-      const uniqueIds = Array.from(byBase.values());
+      const uniqueIds = uniqueIdsByGroup[gi];
 
       let seq = 0;
       for (const id of uniqueIds) {
