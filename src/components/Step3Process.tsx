@@ -145,21 +145,45 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
     return appendSuffix ? `${base}${suffix}` : base;
   };
 
+  const isVater = (han: string) => /^vater$/i.test(han.trim());
+
   const downloadCsv = () => {
-    const maxImages = Math.max(0, ...Object.values(grouped).map((items) => items.length));
-    const header = ["han", ...Array.from({ length: maxImages }, (_, i) => `Bild${i + 1}`)].join(";");
-    const lines: string[] = [header];
     const groupedFiles = new Map<string, string[]>();
     for (const p of processed) {
       if (!groupedFiles.has(p.han)) groupedFiles.set(p.han, []);
       groupedFiles.get(p.han)!.push(csvFilename(p.filename));
     }
-    // Every pasted HAN occurrence (including duplicates) gets the same file cells,
-    // so size/variant rows share the matched images.
-    for (const g of groups) {
+
+    // Resolve per-row files. A "Vater" (parent) row inherits the union of
+    // images from the child rows that follow it, up to the next Vater row
+    // or end of list. This matches how the pasted list is structured:
+    // Vater is always listed immediately before its children, in order.
+    const rowFiles: string[][] = groups.map((g, gi) => {
       const han = g.han.trim();
+      if (!han) return [];
+      if (!isVater(han)) return groupedFiles.get(han) ?? [];
+      const seen = new Set<string>();
+      const out: string[] = [];
+      for (let j = gi + 1; j < groups.length; j++) {
+        const childHan = groups[j].han.trim();
+        if (!childHan) continue;
+        if (isVater(childHan)) break;
+        for (const f of groupedFiles.get(childHan) ?? []) {
+          if (seen.has(f)) continue;
+          seen.add(f);
+          out.push(f);
+        }
+      }
+      return out;
+    });
+
+    const maxImages = Math.max(0, ...rowFiles.map((f) => f.length));
+    const header = ["han", ...Array.from({ length: maxImages }, (_, i) => `Bild${i + 1}`)].join(";");
+    const lines: string[] = [header];
+    for (let gi = 0; gi < groups.length; gi++) {
+      const han = groups[gi].han.trim();
       if (!han) continue;
-      const files = groupedFiles.get(han) ?? [];
+      const files = rowFiles[gi];
       const cells = Array.from({ length: maxImages }, (_, i) => files[i] ?? "");
       lines.push([han, ...cells].join(";"));
     }
@@ -167,6 +191,7 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     downloadBlob(blob, "jtl_import.csv");
   };
+
 
 
   const grouped: Record<string, ProcessedItem[]> = {};
