@@ -8,6 +8,7 @@ import {
   removeBackground,
 } from "@/lib/imagekit";
 import { cn } from "@/lib/utils";
+import { SourceCropEditor } from "@/components/SourceCropEditor";
 
 interface Props {
   images: LoadedImage[];
@@ -34,6 +35,7 @@ export function Step1Upload({
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [bgWorking, setBgWorking] = useState<Set<string>>(new Set());
   const [bgError, setBgError] = useState<Record<string, string>>({});
+  const [cropId, setCropId] = useState<string | null>(null);
 
   const handleFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -126,6 +128,7 @@ export function Step1Upload({
     }
   };
 
+  const cropImage = images.find((i) => i.id === cropId) ?? null;
   const whiteCount = images.filter((i) => i.bg === "white").length;
   const modelCount = images.length - whiteCount;
 
@@ -239,7 +242,20 @@ export function Step1Upload({
                   >
                     ✕
                   </button>
-                  <div className="relative aspect-square overflow-hidden rounded bg-background">
+                  <button
+                    type="button"
+                    onClick={() => setCropId(img.id)}
+                    className="absolute right-8 top-1 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-background/90 text-xs hover:bg-primary hover:text-primary-foreground group-hover:flex"
+                    title="Adjust / crop image"
+                    aria-label="Adjust or crop image"
+                  >
+                    ✂️
+                  </button>
+                  <div
+                    className="relative aspect-square cursor-zoom-in overflow-hidden rounded bg-background"
+                    onDoubleClick={() => setCropId(img.id)}
+                    title="Double-click to adjust / crop"
+                  >
                     <img src={img.url} alt={img.filename} className="h-full w-full object-cover" />
                     <span
                       className={cn(
@@ -270,15 +286,25 @@ export function Step1Upload({
                       {formatBytes(img.size)} · {img.width}×{img.height}
                     </div>
                   </div>
+                  <div className="mt-2 grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setCropId(img.id)}
+                    title="Adjust / crop image"
+                    className="rounded border border-border bg-surface-elevated px-2 py-1 font-mono text-[10px] hover:bg-secondary"
+                  >
+                    ✂️ Adjust
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleRemoveBg(img)}
                     disabled={!canRemoveBg}
                     title="Remove background (runs locally)"
-                    className="mt-2 w-full rounded border border-border bg-surface-elevated px-2 py-1 font-mono text-[10px] hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded border border-border bg-surface-elevated px-2 py-1 font-mono text-[10px] hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     🪄 Remove BG
                   </button>
+                  </div>
                 </div>
               );
             })}
@@ -301,6 +327,17 @@ export function Step1Upload({
             </button>
           </div>
         </>
+      )}
+
+      {cropImage && (
+        <SourceCropEditor
+          image={cropImage}
+          onClose={() => setCropId(null)}
+          onApply={(next) => {
+            onReplace(cropImage.id, next);
+            setCropId(null);
+          }}
+        />
       )}
     </div>
   );
