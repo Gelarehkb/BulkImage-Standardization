@@ -1,5 +1,7 @@
 export type BgKind = "white" | "model";
 
+export type ProcessMode = "auto" | "crop" | "expand";
+
 export interface LoadedImage {
   id: string;
   file: File;
@@ -9,6 +11,10 @@ export interface LoadedImage {
   width: number;
   height: number;
   bg: BgKind;
+  /** How Step 3 should treat this source. */
+  mode?: ProcessMode;
+  /** Background color used when mode === "expand". */
+  bgColor?: string;
 }
 
 export interface SkuGroup {
