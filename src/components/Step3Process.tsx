@@ -88,22 +88,25 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
         if (!src) continue;
         seq++;
         i++;
-        setProgress({ done: i, total, label: `${han}_${seq}.jpg` });
-        try {
-          const el = await loadImageElement(src.url);
-          const blob = await processToSquare(el, 1000, src.bg === "white", maxOutputKiB);
-          const url = URL.createObjectURL(blob);
-          all.push({
-            id: `${han}-${seq}`,
-            han,
-            filename: `${han}_${seq}.jpg`,
-            blob,
-            url,
-            srcId: id,
-          });
-        } catch (err) {
-          console.error(`Failed to process ${src.filename}:`, err);
-        }
+          setProgress({ done: i, total, label: `${han}_${seq}.jpg` });
+          try {
+            const el = await loadImageElement(src.url);
+            // If the user already cropped or expanded the image in Step 1,
+            // preserve that framing instead of re-running the white-bg tight crop.
+            const isWhiteBg = src.bg === "white" && src.mode !== "crop" && src.mode !== "expand";
+            const blob = await processToSquare(el, 1000, isWhiteBg, maxOutputKiB);
+            const url = URL.createObjectURL(blob);
+            all.push({
+              id: `${han}-${seq}`,
+              han,
+              filename: `${han}_${seq}.jpg`,
+              blob,
+              url,
+              srcId: id,
+            });
+          } catch (err) {
+            console.error(`Failed to process ${src.filename}:`, err);
+          }
       }
     }
 
