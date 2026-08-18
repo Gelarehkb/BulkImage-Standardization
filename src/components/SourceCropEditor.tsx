@@ -153,14 +153,14 @@ export function SourceCropEditor({
 
         <div className="mt-3 flex items-center gap-3">
           <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            Zoom
+            Crop size
           </span>
           <input
             type="range"
             min={Math.round(maxSide * 0.15) || 1}
             max={maxSide || 1}
             value={sSide}
-            onChange={(e) => setZoom(maxSide + Math.round(maxSide * 0.15) - Number(e.target.value))}
+            onChange={(e) => setZoom(Number(e.target.value))}
             className="flex-1"
           />
           <span className="font-mono text-[10px] text-muted-foreground">
