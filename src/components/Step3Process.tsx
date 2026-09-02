@@ -252,13 +252,6 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
               ✅ Done · {processed.length} images processed across {Object.keys(grouped).length} groups · max {maxOutputKiB} KiB · double-click any image to re-crop
             </span>
             <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="text"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="add label..."
-                className="h-9 w-44 rounded-md border border-border bg-surface px-3 font-mono text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
               <button
                 type="button"
                 onClick={downloadAll}
