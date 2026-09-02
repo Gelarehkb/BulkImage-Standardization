@@ -337,6 +337,22 @@ export function Step1Upload({
             })}
           </div>
 
+          {fastConverting && (
+            <div className="rounded-md border border-border bg-surface p-4">
+              <div className="flex items-center justify-between font-mono text-xs">
+                <span>⚡ Fast converting… {fastProgress.done} / {fastProgress.total}</span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+                <div
+                  className="h-full bg-primary transition-all"
+                  style={{
+                    width: `${fastProgress.total ? (fastProgress.done / fastProgress.total) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
@@ -344,6 +360,15 @@ export function Step1Upload({
               className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium hover:bg-surface-elevated"
             >
               📋 Export Filename List
+            </button>
+            <button
+              type="button"
+              onClick={fastConvert}
+              disabled={fastConverting || images.length === 0}
+              className="rounded-md border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-40"
+              title="Process all images to 1000×1000 JPG and save them straight to your Downloads folder — skips SKU assignment"
+            >
+              {fastConverting ? "⚡ Converting…" : "⚡ Fast Convert & Download"}
             </button>
             <button
               type="button"
