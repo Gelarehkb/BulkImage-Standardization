@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import JSZip from "jszip";
+
 import type { LoadedImage, ProcessedImage, SkuGroup } from "@/lib/imagekit";
 import {
   downloadBlob,
