@@ -28,7 +28,6 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
   const [progress, setProgress] = useState({ done: 0, total: 0, label: "" });
   const [processed, setProcessed] = useState<ProcessedItem[]>([]);
   const [zipping, setZipping] = useState(false);
-  const [label, setLabel] = useState("");
   const [appendSuffix, setAppendSuffix] = useState(true);
   const [suffix, setSuffix] = useState(".jpg");
   const [cropTarget, setCropTarget] = useState<ProcessedItem | null>(null);
@@ -115,40 +114,15 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
     setDone(true);
   };
 
-  const buildExportName = () => {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const date = `${yyyy}-${mm}-${dd}`;
-    const trimmed = label.trim();
-    return trimmed ? `${date} ${trimmed} converted` : `${date} converted`;
-  };
-
   const downloadAll = async () => {
     setZipping(true);
     try {
-      const name = buildExportName();
-      const picker = (window as unknown as {
-        showDirectoryPicker?: (opts?: { mode?: string }) => Promise<any>;
-      }).showDirectoryPicker;
-
-      if (picker) {
-        // Save straight into a folder the user picks (creates a subfolder).
-        const root = await picker.call(window, { mode: "readwrite" });
-        const folder = await root.getDirectoryHandle(name, { create: true });
-        for (const p of processed) {
-          const fh = await folder.getFileHandle(p.filename, { create: true });
-          const w = await fh.createWritable();
-          await w.write(p.blob);
-          await w.close();
-        }
-      } else {
-        // Fallback: sequential downloads into the browser's download folder.
-        for (const p of processed) {
-          downloadBlob(p.blob, p.filename);
-          await new Promise((r) => setTimeout(r, 250));
-        }
+      // Save every processed image straight into the browser's default
+      // Downloads folder. Browsers do not let web apps choose a subfolder
+      // automatically, so each file lands in Downloads directly.
+      for (const p of processed) {
+        downloadBlob(p.blob, p.filename);
+        await new Promise((r) => setTimeout(r, 250));
       }
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
@@ -278,20 +252,13 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
               ✅ Done · {processed.length} images processed across {Object.keys(grouped).length} groups · max {maxOutputKiB} KiB · double-click any image to re-crop
             </span>
             <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="text"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="add label..."
-                className="h-9 w-44 rounded-md border border-border bg-surface px-3 font-mono text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
               <button
                 type="button"
                 onClick={downloadAll}
                 disabled={zipping || processed.length === 0}
                 className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
               >
-                {zipping ? "Saving images…" : "⬬ Download Images (Folder)"}
+                {zipping ? "Saving images…" : "⬬ Download Images"}
               </button>
               <button
                 type="button"
