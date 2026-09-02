@@ -125,23 +125,40 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
     return trimmed ? `${date} ${trimmed} converted` : `${date} converted`;
   };
 
-  const downloadZip = async () => {
+  const downloadAll = async () => {
     setZipping(true);
     try {
-      const zip = new JSZip();
       const name = buildExportName();
-      const folder = zip.folder(name);
-      if (!folder) throw new Error("Failed to create folder");
-      for (const p of processed) folder.file(p.filename, p.blob);
-      const blob = await zip.generateAsync({ type: "blob" });
-      downloadBlob(blob, `${name}.zip`);
+      const picker = (window as unknown as {
+        showDirectoryPicker?: (opts?: { mode?: string }) => Promise<any>;
+      }).showDirectoryPicker;
+
+      if (picker) {
+        // Save straight into a folder the user picks (creates a subfolder).
+        const root = await picker.call(window, { mode: "readwrite" });
+        const folder = await root.getDirectoryHandle(name, { create: true });
+        for (const p of processed) {
+          const fh = await folder.getFileHandle(p.filename, { create: true });
+          const w = await fh.createWritable();
+          await w.write(p.blob);
+          await w.close();
+        }
+      } else {
+        // Fallback: sequential downloads into the browser's download folder.
+        for (const p of processed) {
+          downloadBlob(p.blob, p.filename);
+          await new Promise((r) => setTimeout(r, 250));
+        }
+      }
     } catch (e) {
+      if ((e as Error)?.name === "AbortError") return;
       console.error(e);
-      alert("Failed to build ZIP. Please try again.");
+      alert("Failed to save images. Please try again.");
     } finally {
       setZipping(false);
     }
   };
+
 
   const csvFilename = (filename: string) => {
     const base = filename.replace(/\.jpe?g$/i, "");
