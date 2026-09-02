@@ -129,6 +129,32 @@ export function Step1Upload({
     }
   };
 
+  const [fastConverting, setFastConverting] = useState(false);
+  const [fastProgress, setFastProgress] = useState({ done: 0, total: 0 });
+
+  const fastConvert = async () => {
+    if (fastConverting || images.length === 0) return;
+    setFastConverting(true);
+    setFastProgress({ done: 0, total: images.length });
+    let done = 0;
+    for (const img of images) {
+      try {
+        const el = await loadImageElement(img.url);
+        // Preserve manual crop/expand framing from the Step 1 editor.
+        const isWhiteBg = img.bg === "white" && img.mode !== "crop" && img.mode !== "expand";
+        const blob = await processToSquare(el, 1000, isWhiteBg, 250);
+        const base = img.filename.replace(/\.[^.]+$/, "");
+        downloadBlob(blob, `${base}.jpg`);
+        await new Promise((r) => setTimeout(r, 250));
+      } catch (e) {
+        console.error(`Fast convert failed for ${img.filename}:`, e);
+      }
+      done++;
+      setFastProgress({ done, total: images.length });
+    }
+    setFastConverting(false);
+  };
+
   const cropImage = images.find((i) => i.id === cropId) ?? null;
   const whiteCount = images.filter((i) => i.bg === "white").length;
   const modelCount = images.length - whiteCount;
