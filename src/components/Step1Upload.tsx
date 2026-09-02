@@ -5,6 +5,7 @@ import {
   downloadBlob,
   formatBytes,
   loadImageElement,
+  processToSquare,
   removeBackground,
 } from "@/lib/imagekit";
 import { cn } from "@/lib/utils";
