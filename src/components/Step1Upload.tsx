@@ -242,6 +242,15 @@ export function Step1Upload({
               </span>
               <button
                 type="button"
+                onClick={fastConvert}
+                disabled={fastConverting}
+                className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-40"
+                title="Process all images to 1000×1000 JPG and save straight to Downloads — skips SKU assignment"
+              >
+                {fastConverting ? "⚡ Converting…" : "⚡ Fast Convert & Download"}
+              </button>
+              <button
+                type="button"
                 onClick={handleRemoveAll}
                 className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive hover:bg-destructive/20"
               >
