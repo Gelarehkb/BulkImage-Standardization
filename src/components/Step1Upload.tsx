@@ -5,6 +5,7 @@ import {
   downloadBlob,
   formatBytes,
   loadImageElement,
+  processToSquare,
   removeBackground,
 } from "@/lib/imagekit";
 import { cn } from "@/lib/utils";
@@ -126,6 +127,32 @@ export function Step1Upload({
         return n;
       });
     }
+  };
+
+  const [fastConverting, setFastConverting] = useState(false);
+  const [fastProgress, setFastProgress] = useState({ done: 0, total: 0 });
+
+  const fastConvert = async () => {
+    if (fastConverting || images.length === 0) return;
+    setFastConverting(true);
+    setFastProgress({ done: 0, total: images.length });
+    let done = 0;
+    for (const img of images) {
+      try {
+        const el = await loadImageElement(img.url);
+        // Preserve manual crop/expand framing from the Step 1 editor.
+        const isWhiteBg = img.bg === "white" && img.mode !== "crop" && img.mode !== "expand";
+        const blob = await processToSquare(el, 1000, isWhiteBg, 250);
+        const base = img.filename.replace(/\.[^.]+$/, "");
+        downloadBlob(blob, `${base}.jpg`);
+        await new Promise((r) => setTimeout(r, 250));
+      } catch (e) {
+        console.error(`Fast convert failed for ${img.filename}:`, e);
+      }
+      done++;
+      setFastProgress({ done, total: images.length });
+    }
+    setFastConverting(false);
   };
 
   const cropImage = images.find((i) => i.id === cropId) ?? null;
@@ -310,6 +337,22 @@ export function Step1Upload({
             })}
           </div>
 
+          {fastConverting && (
+            <div className="rounded-md border border-border bg-surface p-4">
+              <div className="flex items-center justify-between font-mono text-xs">
+                <span>⚡ Fast converting… {fastProgress.done} / {fastProgress.total}</span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+                <div
+                  className="h-full bg-primary transition-all"
+                  style={{
+                    width: `${fastProgress.total ? (fastProgress.done / fastProgress.total) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
@@ -317,6 +360,15 @@ export function Step1Upload({
               className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium hover:bg-surface-elevated"
             >
               📋 Export Filename List
+            </button>
+            <button
+              type="button"
+              onClick={fastConvert}
+              disabled={fastConverting || images.length === 0}
+              className="rounded-md border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-40"
+              title="Process all images to 1000×1000 JPG and save them straight to your Downloads folder — skips SKU assignment"
+            >
+              {fastConverting ? "⚡ Converting…" : "⚡ Fast Convert & Download"}
             </button>
             <button
               type="button"
