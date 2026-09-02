@@ -28,7 +28,6 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
   const [progress, setProgress] = useState({ done: 0, total: 0, label: "" });
   const [processed, setProcessed] = useState<ProcessedItem[]>([]);
   const [zipping, setZipping] = useState(false);
-  const [label, setLabel] = useState("");
   const [appendSuffix, setAppendSuffix] = useState(true);
   const [suffix, setSuffix] = useState(".jpg");
   const [cropTarget, setCropTarget] = useState<ProcessedItem | null>(null);
