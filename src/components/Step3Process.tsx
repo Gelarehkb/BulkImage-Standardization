@@ -128,27 +128,12 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
   const downloadAll = async () => {
     setZipping(true);
     try {
-      const name = buildExportName();
-      const picker = (window as unknown as {
-        showDirectoryPicker?: (opts?: { mode?: string }) => Promise<any>;
-      }).showDirectoryPicker;
-
-      if (picker) {
-        // Save straight into a folder the user picks (creates a subfolder).
-        const root = await picker.call(window, { mode: "readwrite" });
-        const folder = await root.getDirectoryHandle(name, { create: true });
-        for (const p of processed) {
-          const fh = await folder.getFileHandle(p.filename, { create: true });
-          const w = await fh.createWritable();
-          await w.write(p.blob);
-          await w.close();
-        }
-      } else {
-        // Fallback: sequential downloads into the browser's download folder.
-        for (const p of processed) {
-          downloadBlob(p.blob, p.filename);
-          await new Promise((r) => setTimeout(r, 250));
-        }
+      // Save every processed image straight into the browser's default
+      // Downloads folder. Browsers do not let web apps choose a subfolder
+      // automatically, so each file lands in Downloads directly.
+      for (const p of processed) {
+        downloadBlob(p.blob, p.filename);
+        await new Promise((r) => setTimeout(r, 250));
       }
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
