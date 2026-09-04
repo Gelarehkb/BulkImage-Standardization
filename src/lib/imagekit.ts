@@ -222,6 +222,51 @@ export function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Folder name like "2026-09-04 converted". */
+export function defaultFolderName(label = "converted"): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${label}`;
+}
+
+/**
+ * Save many blobs into a real folder.
+ * Uses the File System Access API (Chrome/Edge): the user picks a location once
+ * (e.g. Downloads) and a subfolder is created for the batch. Browsers without
+ * that API fall back to sequential single-file downloads.
+ */
+export async function saveBlobsToFolder(
+  files: Array<{ filename: string; blob: Blob }>,
+  folderName = defaultFolderName(),
+  onProgress?: (done: number, total: number) => void,
+): Promise<"folder" | "downloads"> {
+  const picker = (window as unknown as {
+    showDirectoryPicker?: (o?: { mode?: string }) => Promise<FileSystemDirectoryHandle>;
+  }).showDirectoryPicker;
+
+  if (typeof picker === "function") {
+    const root = await picker({ mode: "readwrite" });
+    const dir = await root.getDirectoryHandle(folderName, { create: true });
+    let done = 0;
+    for (const f of files) {
+      const handle = await dir.getFileHandle(f.filename, { create: true });
+      const writable = await handle.createWritable();
+      await writable.write(f.blob);
+      await writable.close();
+      onProgress?.(++done, files.length);
+    }
+    return "folder";
+  }
+
+  let done = 0;
+  for (const f of files) {
+    downloadBlob(f.blob, f.filename);
+    await new Promise((r) => setTimeout(r, 250));
+    onProgress?.(++done, files.length);
+  }
+  return "downloads";
+}
+
 /**
  * Remove background locally using @imgly/background-removal (runs in browser via WASM).
  * Composites the cutout onto a solid white background and returns a PNG blob.

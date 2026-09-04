@@ -117,12 +117,12 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
   const downloadAll = async () => {
     setZipping(true);
     try {
-      // Save every processed image straight into the browser's default
-      // Downloads folder. Browsers do not let web apps choose a subfolder
-      // automatically, so each file lands in Downloads directly.
-      for (const p of processed) {
-        downloadBlob(p.blob, p.filename);
-        await new Promise((r) => setTimeout(r, 250));
+      // Saves all images into a real folder ("YYYY-MM-DD converted"). The
+      // browser asks once where to put it (e.g. Downloads). Older browsers
+      // fall back to individual downloads.
+      const mode = await saveBlobsToFolder(processed);
+      if (mode === "downloads") {
+        alert("Your browser doesn't support folder saving — images were downloaded individually.");
       }
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
