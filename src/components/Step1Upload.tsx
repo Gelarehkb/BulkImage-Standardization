@@ -136,6 +136,7 @@ export function Step1Upload({
     if (fastConverting || images.length === 0) return;
     setFastConverting(true);
     setFastProgress({ done: 0, total: images.length });
+    const files: Array<{ filename: string; blob: Blob }> = [];
     let done = 0;
     for (const img of images) {
       try {
@@ -144,13 +145,24 @@ export function Step1Upload({
         const isWhiteBg = img.bg === "white" && img.mode !== "crop" && img.mode !== "expand";
         const blob = await processToSquare(el, 1000, isWhiteBg, 250);
         const base = img.filename.replace(/\.[^.]+$/, "");
-        downloadBlob(blob, `${base}.jpg`);
-        await new Promise((r) => setTimeout(r, 250));
+        files.push({ filename: `${base}.jpg`, blob });
       } catch (e) {
         console.error(`Fast convert failed for ${img.filename}:`, e);
       }
       done++;
       setFastProgress({ done, total: images.length });
+    }
+    try {
+      // Save all converted images into a real folder ("YYYY-MM-DD converted").
+      const mode = await saveBlobsToFolder(files);
+      if (mode === "downloads") {
+        alert("Your browser doesn't support folder saving — images were downloaded individually.");
+      }
+    } catch (e) {
+      if ((e as Error)?.name !== "AbortError") {
+        console.error(e);
+        alert("Failed to save images. Please try again.");
+      }
     }
     setFastConverting(false);
   };
