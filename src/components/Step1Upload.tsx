@@ -64,10 +64,12 @@ export function Step1Upload({
             height: imgEl.naturalHeight,
             bg,
           });
-        } catch {
-          // Skip unreadable images
+        } catch (err) {
+          console.error("[Step1Upload] failed to load image", f.name, err);
         }
         setProgress({ done: i + 1, total: arr.length });
+        // Yield to the browser so the UI stays responsive on large batches.
+        await new Promise((r) => setTimeout(r, 0));
       }
 
       onMerge(loaded);
