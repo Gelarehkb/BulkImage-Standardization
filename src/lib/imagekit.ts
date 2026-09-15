@@ -8,6 +8,8 @@ export interface LoadedImage {
   filename: string;
   size: number;
   url: string;
+  /** Small preview URL used by grids so big batches stay fast. */
+  thumbUrl?: string;
   width: number;
   height: number;
   bg: BgKind;
@@ -48,13 +50,18 @@ export function loadImageElement(url: string): Promise<HTMLImageElement> {
 
 /** Sample 4 corners (15x15) and decide if avg brightness > 238 → white bg */
 export async function detectWhiteBg(img: HTMLImageElement): Promise<BgKind> {
-  const sample = 15;
+  // Analyse a small downscaled copy — full-resolution canvases are the main
+  // cause of lag/memory pressure when loading large batches.
+  const MAX = 256;
+  const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+  const sample = 6;
   const canvas = document.createElement("canvas");
-  canvas.width = img.naturalWidth;
-  canvas.height = img.naturalHeight;
-  const ctx = canvas.getContext("2d");
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) return "model";
-  ctx.drawImage(img, 0, 0);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
 
   const corners: Array<[number, number]> = [
     [0, 0],
@@ -81,6 +88,29 @@ export async function detectWhiteBg(img: HTMLImageElement): Promise<BgKind> {
 }
 
 /**
+ * Build a small JPEG preview URL (max `max` px) so galleries don't decode
+ * full-resolution photos for every thumbnail.
+ */
+export async function makeThumbUrl(img: HTMLImageElement, max = 320): Promise<string | undefined> {
+  try {
+    const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    if (scale === 1) return undefined; // already small — reuse the original
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const cx = c.getContext("2d");
+    if (!cx) return undefined;
+    cx.fillStyle = "#FFFFFF";
+    cx.fillRect(0, 0, c.width, c.height);
+    cx.drawImage(img, 0, 0, c.width, c.height);
+    const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.72));
+    return blob ? URL.createObjectURL(blob) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Find tight bounding box of non-white pixels (threshold-based).
  * Returns null if image is fully white/empty.
  */
@@ -88,13 +118,18 @@ export function findContentBounds(
   img: HTMLImageElement,
   brightnessThreshold = 245,
 ): { x: number; y: number; w: number; h: number } | null {
+  // Scan a downscaled copy (max 600px) — 25x less pixel work on large photos,
+  // then map the bounds back to source pixels.
+  const MAX = 600;
+  const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
   const c = document.createElement("canvas");
-  c.width = img.naturalWidth;
-  c.height = img.naturalHeight;
-  const cx = c.getContext("2d");
+  c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  const cx = c.getContext("2d", { willReadFrequently: true });
   if (!cx) return null;
-  cx.drawImage(img, 0, 0);
+  cx.drawImage(img, 0, 0, c.width, c.height);
   const { data, width, height } = cx.getImageData(0, 0, c.width, c.height);
+
 
   let minX = width, minY = height, maxX = -1, maxY = -1;
   for (let y = 0; y < height; y++) {
@@ -112,7 +147,12 @@ export function findContentBounds(
     }
   }
   if (maxX < 0) return null;
-  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+  const inv = 1 / scale;
+  const x = Math.max(0, Math.floor(minX * inv));
+  const y = Math.max(0, Math.floor(minY * inv));
+  const w = Math.min(img.naturalWidth - x, Math.ceil((maxX - minX + 1) * inv));
+  const h = Math.min(img.naturalHeight - y, Math.ceil((maxY - minY + 1) * inv));
+  return { x, y, w, h };
 }
 
 /**

@@ -41,6 +41,7 @@ function ImageKitProApp() {
       for (const img of incoming) {
         if (seen.has(img.filename)) {
           URL.revokeObjectURL(img.url);
+          if (img.thumbUrl) URL.revokeObjectURL(img.thumbUrl);
           continue;
         }
         seen.add(img.filename);
@@ -58,7 +59,10 @@ function ImageKitProApp() {
   const removeImage = (id: string) => {
     setImages((prev) => {
       const target = prev.find((i) => i.id === id);
-      if (target) URL.revokeObjectURL(target.url);
+      if (target) {
+        URL.revokeObjectURL(target.url);
+        if (target.thumbUrl) URL.revokeObjectURL(target.thumbUrl);
+      }
       return prev.filter((i) => i.id !== id);
     });
     setGroups((prev) => prev.map((g) => ({ ...g, imageIds: g.imageIds.filter((x) => x !== id) })));
@@ -72,7 +76,10 @@ function ImageKitProApp() {
   };
 
   const removeAllImages = () => {
-    images.forEach((i) => URL.revokeObjectURL(i.url));
+    images.forEach((i) => {
+      URL.revokeObjectURL(i.url);
+      if (i.thumbUrl) URL.revokeObjectURL(i.thumbUrl);
+    });
     setImages([]);
     setGroups([]);
     setUnmatchedIds([]);
@@ -84,7 +91,10 @@ function ImageKitProApp() {
       const idx = prev.findIndex((i) => i.id === id);
       if (idx === -1) return prev;
       const old = prev[idx];
-      if (old.url !== next.url) URL.revokeObjectURL(old.url);
+      if (old.url !== next.url) {
+        URL.revokeObjectURL(old.url);
+        if (old.thumbUrl && old.thumbUrl !== next.thumbUrl) URL.revokeObjectURL(old.thumbUrl);
+      }
       const copy = [...prev];
       copy[idx] = next;
       return copy;

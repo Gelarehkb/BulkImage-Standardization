@@ -509,7 +509,7 @@ export function Step2Sku({
                         >
                           <div className="flex gap-3">
                             <img
-                              src={img.url}
+                              src={img.thumbUrl ?? img.url}
                               alt=""
                               className="pointer-events-none h-16 w-16 shrink-0 rounded object-cover"
                             />
@@ -741,7 +741,7 @@ function GroupRow({
                 )}
                 title={img.filename}
               >
-                <img src={img.url} alt="" className="h-full w-full object-cover" />
+                <img src={img.thumbUrl ?? img.url} alt="" className="h-full w-full object-cover" />
                 <span className="absolute bottom-0 left-0 bg-background/80 px-1 font-mono text-[9px]">
                   {idx + 1}
                 </span>
