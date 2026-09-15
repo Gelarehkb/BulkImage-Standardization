@@ -5,6 +5,7 @@ import {
   downloadBlob,
   formatBytes,
   loadImageElement,
+  makeThumbUrl,
   processToSquare,
   removeBackground,
   saveBlobsToFolder,
@@ -54,12 +55,14 @@ export function Step1Upload({
         try {
           const imgEl = await loadImageElement(url);
           const bg = await detectWhiteBg(imgEl);
+          const thumbUrl = await makeThumbUrl(imgEl);
           loaded.push({
             id: `${Date.now()}-${i}-${f.name}`,
             file: f,
             filename: f.name,
             size: f.size,
             url,
+            thumbUrl,
             width: imgEl.naturalWidth,
             height: imgEl.naturalHeight,
             bg,
@@ -307,7 +310,13 @@ export function Step1Upload({
                     onDoubleClick={() => setCropId(img.id)}
                     title="Double-click to adjust / crop"
                   >
-                    <img src={img.url} alt={img.filename} className="h-full w-full object-cover" />
+                    <img
+                      src={img.thumbUrl ?? img.url}
+                      alt={img.filename}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                    />
                     <span
                       className={cn(
                         "absolute left-1.5 top-1.5 rounded-full border px-1.5 py-0.5 font-mono text-[9px] backdrop-blur",
