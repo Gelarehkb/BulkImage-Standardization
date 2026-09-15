@@ -244,19 +244,36 @@ export async function saveBlobsToFolder(
     showDirectoryPicker?: (o?: { mode?: string }) => Promise<FileSystemDirectoryHandle>;
   }).showDirectoryPicker;
 
-  if (typeof picker === "function") {
-    const root = await picker({ mode: "readwrite" });
-    const dir = await root.getDirectoryHandle(folderName, { create: true });
-    let done = 0;
-    for (const f of files) {
-      const handle = await dir.getFileHandle(f.filename, { create: true });
-      const writable = await handle.createWritable();
-      await writable.write(f.blob);
-      await writable.close();
-      onProgress?.(++done, files.length);
-    }
-    return "folder";
+  // Inside a cross-origin preview iframe the directory picker is blocked by the
+  // browser, so go straight to normal downloads there.
+  let embedded = false;
+  try {
+    embedded = window.self !== window.top;
+  } catch {
+    embedded = true;
   }
+
+  if (typeof picker === "function" && !embedded) {
+    try {
+      const root = await picker({ mode: "readwrite" });
+      const dir = await root.getDirectoryHandle(folderName, { create: true });
+      let done = 0;
+      for (const f of files) {
+        const handle = await dir.getFileHandle(f.filename, { create: true });
+        const writable = await handle.createWritable();
+        await writable.write(f.blob);
+        await writable.close();
+        onProgress?.(++done, files.length);
+      }
+      return "folder";
+    } catch (err) {
+      // User cancelled the picker → do nothing further.
+      if ((err as Error)?.name === "AbortError") throw err;
+      // Anything else (blocked, permission denied) → fall back to downloads.
+      console.warn("Folder saving unavailable, falling back to downloads", err);
+    }
+  }
+
 
   let done = 0;
   for (const f of files) {
