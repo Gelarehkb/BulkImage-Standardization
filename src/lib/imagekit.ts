@@ -88,6 +88,29 @@ export async function detectWhiteBg(img: HTMLImageElement): Promise<BgKind> {
 }
 
 /**
+ * Build a small JPEG preview URL (max `max` px) so galleries don't decode
+ * full-resolution photos for every thumbnail.
+ */
+export async function makeThumbUrl(img: HTMLImageElement, max = 320): Promise<string | undefined> {
+  try {
+    const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    if (scale === 1) return undefined; // already small — reuse the original
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const cx = c.getContext("2d");
+    if (!cx) return undefined;
+    cx.fillStyle = "#FFFFFF";
+    cx.fillRect(0, 0, c.width, c.height);
+    cx.drawImage(img, 0, 0, c.width, c.height);
+    const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.72));
+    return blob ? URL.createObjectURL(blob) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Find tight bounding box of non-white pixels (threshold-based).
  * Returns null if image is fully white/empty.
  */
