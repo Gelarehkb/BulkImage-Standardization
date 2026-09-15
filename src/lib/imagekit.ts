@@ -8,6 +8,8 @@ export interface LoadedImage {
   filename: string;
   size: number;
   url: string;
+  /** Small preview URL used by grids so big batches stay fast. */
+  thumbUrl?: string;
   width: number;
   height: number;
   bg: BgKind;
