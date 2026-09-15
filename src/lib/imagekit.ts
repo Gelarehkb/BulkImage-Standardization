@@ -93,13 +93,18 @@ export function findContentBounds(
   img: HTMLImageElement,
   brightnessThreshold = 245,
 ): { x: number; y: number; w: number; h: number } | null {
+  // Scan a downscaled copy (max 600px) — 25x less pixel work on large photos,
+  // then map the bounds back to source pixels.
+  const MAX = 600;
+  const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
   const c = document.createElement("canvas");
-  c.width = img.naturalWidth;
-  c.height = img.naturalHeight;
-  const cx = c.getContext("2d");
+  c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  const cx = c.getContext("2d", { willReadFrequently: true });
   if (!cx) return null;
-  cx.drawImage(img, 0, 0);
+  cx.drawImage(img, 0, 0, c.width, c.height);
   const { data, width, height } = cx.getImageData(0, 0, c.width, c.height);
+
 
   let minX = width, minY = height, maxX = -1, maxY = -1;
   for (let y = 0; y < height; y++) {
