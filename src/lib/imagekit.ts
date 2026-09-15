@@ -122,7 +122,12 @@ export function findContentBounds(
     }
   }
   if (maxX < 0) return null;
-  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+  const inv = 1 / scale;
+  const x = Math.max(0, Math.floor(minX * inv));
+  const y = Math.max(0, Math.floor(minY * inv));
+  const w = Math.min(img.naturalWidth - x, Math.ceil((maxX - minX + 1) * inv));
+  const h = Math.min(img.naturalHeight - y, Math.ceil((maxY - minY + 1) * inv));
+  return { x, y, w, h };
 }
 
 /**
