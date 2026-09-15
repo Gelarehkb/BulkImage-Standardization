@@ -48,13 +48,18 @@ export function loadImageElement(url: string): Promise<HTMLImageElement> {
 
 /** Sample 4 corners (15x15) and decide if avg brightness > 238 → white bg */
 export async function detectWhiteBg(img: HTMLImageElement): Promise<BgKind> {
-  const sample = 15;
+  // Analyse a small downscaled copy — full-resolution canvases are the main
+  // cause of lag/memory pressure when loading large batches.
+  const MAX = 256;
+  const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+  const sample = 6;
   const canvas = document.createElement("canvas");
-  canvas.width = img.naturalWidth;
-  canvas.height = img.naturalHeight;
-  const ctx = canvas.getContext("2d");
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) return "model";
-  ctx.drawImage(img, 0, 0);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
 
   const corners: Array<[number, number]> = [
     [0, 0],
