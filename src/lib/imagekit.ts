@@ -262,6 +262,13 @@ export function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Filename prefix like "2026-10-14_19-43" so a batch groups together in Downloads. */
+export function dateTimePrefix(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`;
+}
+
 /** Folder name like "2026-09-04 converted". */
 export function defaultFolderName(label = "converted"): string {
   const d = new Date();

@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { LoadedImage } from "@/lib/imagekit";
 import {
+  dateTimePrefix,
   detectWhiteBg,
   downloadBlob,
   formatBytes,
@@ -8,7 +9,6 @@ import {
   makeThumbUrl,
   processToSquare,
   removeBackground,
-  saveBlobsToFolder,
 } from "@/lib/imagekit";
 import { cn } from "@/lib/utils";
 import { SourceCropEditor } from "@/components/SourceCropEditor";
@@ -151,24 +151,18 @@ export function Step1Upload({
         const isWhiteBg = img.bg === "white" && img.mode !== "crop" && img.mode !== "expand";
         const blob = await processToSquare(el, 1000, isWhiteBg, 250);
         const base = img.filename.replace(/\.[^.]+$/, "");
-        files.push({ filename: `${base}.jpg`, blob });
+        files.push({ filename: `${dateTimePrefix()}_${base}.jpg`, blob });
       } catch (e) {
         console.error(`Fast convert failed for ${img.filename}:`, e);
       }
       done++;
       setFastProgress({ done, total: images.length });
     }
-    try {
-      // Save all converted images into a real folder ("YYYY-MM-DD converted").
-      const mode = await saveBlobsToFolder(files);
-      if (mode === "downloads") {
-        alert("Your browser doesn't support folder saving — images were downloaded individually.");
-      }
-    } catch (e) {
-      if ((e as Error)?.name !== "AbortError") {
-        console.error(e);
-        alert("Failed to save images. Please try again.");
-      }
+    // Download straight to the default Downloads folder — no picker, no prompts.
+    // Each filename carries the date+time prefix so the batch groups together.
+    for (const f of files) {
+      downloadBlob(f.blob, f.filename);
+      await new Promise((r) => setTimeout(r, 200));
     }
     setFastConverting(false);
   };
