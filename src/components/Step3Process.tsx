@@ -6,7 +6,7 @@ import {
   loadImageElement,
   processToSquare,
   processToSquareWithOffset,
-  saveBlobsToFolder,
+  dateTimePrefix,
 } from "@/lib/imagekit";
 
 interface Props {
