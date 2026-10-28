@@ -6,7 +6,7 @@ import {
   loadImageElement,
   processToSquare,
   processToSquareWithOffset,
-  dateTimePrefix,
+  downloadAsZip,
 } from "@/lib/imagekit";
 
 interface Props {
@@ -120,11 +120,7 @@ export function Step3Process({ images, groups, skippedIds, maxOutputKiB }: Props
     try {
       // Straight to the default Downloads folder, no picker. Filenames carry
       // today's date+time so the batch groups together.
-      const prefix = dateTimePrefix();
-      for (const f of processed) {
-        downloadBlob(f.blob, `${prefix}_${f.filename}`);
-        await new Promise((r) => setTimeout(r, 200));
-      }
+      await downloadAsZip(processed);
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
       console.error(e);

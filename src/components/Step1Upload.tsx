@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { LoadedImage } from "@/lib/imagekit";
 import {
-  dateTimePrefix,
+  downloadAsZip,
   detectWhiteBg,
   downloadBlob,
   formatBytes,
@@ -151,7 +151,7 @@ export function Step1Upload({
         const isWhiteBg = img.bg === "white" && img.mode !== "crop" && img.mode !== "expand";
         const blob = await processToSquare(el, 1000, isWhiteBg, 250);
         const base = img.filename.replace(/\.[^.]+$/, "");
-        files.push({ filename: `${dateTimePrefix()}_${base}.jpg`, blob });
+        files.push({ filename: `${base}.jpg`, blob });
       } catch (e) {
         console.error(`Fast convert failed for ${img.filename}:`, e);
       }
@@ -160,10 +160,7 @@ export function Step1Upload({
     }
     // Download straight to the default Downloads folder — no picker, no prompts.
     // Each filename carries the date+time prefix so the batch groups together.
-    for (const f of files) {
-      downloadBlob(f.blob, f.filename);
-      await new Promise((r) => setTimeout(r, 200));
-    }
+    if (files.length) await downloadAsZip(files);
     setFastConverting(false);
   };
 

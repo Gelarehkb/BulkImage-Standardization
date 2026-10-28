@@ -259,7 +259,7 @@ export function downloadBlob(blob: Blob, filename: string) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 /** Filename prefix like "2026-10-14_19-43" so a batch groups together in Downloads. */
@@ -433,4 +433,20 @@ export function matchSkus(
   });
 
   return { groups, unmatched };
+}
+
+/** Bundle files into one ZIP named "YYYY-MM-DD_HH-MM.zip" and download it. */
+export async function downloadAsZip(files: Array<{ filename: string; blob: Blob }>): Promise<void> {
+  const { default: JSZip } = await import("jszip");
+  const zip = new JSZip();
+  const used = new Set<string>();
+  for (const f of files) {
+    let name = f.filename;
+    let n = 2;
+    while (used.has(name)) name = f.filename.replace(/(\.[^.]+)?$/, `_${n++}$1`);
+    used.add(name);
+    zip.file(name, f.blob);
+  }
+  const blob = await zip.generateAsync({ type: "blob", compression: "STORE" });
+  downloadBlob(blob, `${dateTimePrefix()}.zip`);
 }
